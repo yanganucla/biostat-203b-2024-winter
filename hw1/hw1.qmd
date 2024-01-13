@@ -49,6 +49,7 @@ This exercise (and later in this course) uses the [MIMIC-IV data v2.2](https://p
 
 **Answer** I completed citi training, here is the link to my [completition report](https://www.citiprogram.org/verify/?k79d241df-eab0-4f27-9007-ddc1d56869fb-60370406). Here is the link to my  [completition certificate](https://www.citiprogram.org/verify/?wd521b30d-d2c3-44ee-8efc-4a8481c9e8a9-60370406).
 
+![](citi_completion_report.png)
 ## Q3. Linux Shell Commands
 
 1. Make the MIMIC v2.2 data available at location `~/mimic`. 
