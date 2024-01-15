@@ -66,8 +66,8 @@ ls -l ~/mimic/
 2. Display the contents in the folders `hosp` and `icu` using Bash command `ls -l`. Why are these data files distributed as `.csv.gz` files instead of `.csv` (comma separated values) files? Read the page <https://mimic.mit.edu/docs/iv/> to understand what's in each folder.
 ```{bash}
 #| eval: false
-ls -l hosp
-ls -l icu
+ls -l ~/mimic/hosp
+ls -l ~/mimic/icu
 ```
 **Answer**The reason the data files are distributed as `.csv.gz` files instead of just `.csv` files is to compress the data and reduce the file size. The `.gz` extension indicates that the files are compressed using gzip compression. By compressing the files, it not only saves storage space but also makes it faster to transfer and download the files. The `hosp` folder contains hospital-level data, including information about the hospitals in the MIMIC-IV dataset. The `icu` folder contains intensive care unit (ICU)-level data, including information about the ICUs and the patients admitted to those ICUs.
 
