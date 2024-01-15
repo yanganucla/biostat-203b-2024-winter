@@ -53,17 +53,26 @@ This exercise (and later in this course) uses the [MIMIC-IV data v2.2](https://p
 ## Q3. Linux Shell Commands
 
 1. Make the MIMIC v2.2 data available at location `~/mimic`. 
+
+Refer to the documentation <https://physionet.org/content/mimiciv/2.2/> for details of data files. Please, do **not** put these data files into Git; they are big. Do **not** copy them into your directory. Do **not** decompress the gz data files. These create unnecessary big files and are not big-data-friendly practices. Read from the data folder `~/mimic` directly in following exercises. 
+
+  Use Bash commands to answer following questions.
+**Answer** I created a symbolic link 'mimic' to my mimic data folder. The symbolic link is located in my home directory. The symbolic link is created using the following command: `ln -s ~/mimic/ ~/mimic`. The following command is used to check the symbolic link: `ls -l ~/mimic/`. The output of the command is shown below.
+
 ```{bash}
 #| eval: false
 ls -l ~/mimic/
 ```
-Refer to the documentation <https://physionet.org/content/mimiciv/2.2/> for details of data files. Please, do **not** put these data files into Git; they are big. Do **not** copy them into your directory. Do **not** decompress the gz data files. These create unnecessary big files and are not big-data-friendly practices. Read from the data folder `~/mimic` directly in following exercises. 
-
-  Use Bash commands to answer following questions.
-
 2. Display the contents in the folders `hosp` and `icu` using Bash command `ls -l`. Why are these data files distributed as `.csv.gz` files instead of `.csv` (comma separated values) files? Read the page <https://mimic.mit.edu/docs/iv/> to understand what's in each folder.
+```{bash}
+#| eval: false
+ls -l hosp
+ls -l icu
+```
+**Answer**The reason the data files are distributed as `.csv.gz` files instead of just `.csv` files is to compress the data and reduce the file size. The `.gz` extension indicates that the files are compressed using gzip compression. By compressing the files, it not only saves storage space but also makes it faster to transfer and download the files. The `hosp` folder contains hospital-level data, including information about the hospitals in the MIMIC-IV dataset. The `icu` folder contains intensive care unit (ICU)-level data, including information about the ICUs and the patients admitted to those ICUs.
 
 3. Briefly describe what Bash commands `zcat`, `zless`, `zmore`, and `zgrep` do.
+**Answer** The 'zcat' command is used to display the contents of a compressed file. The 'zless' command is used to display the contents of a compressed file one page at a time. The 'zmore' command is used to diaplay the contents of a compressed file one screen at a time. The 'zgrep' command is used to search for a pattern in a compressed file.
 
 4. (Looping in Bash) What's the output of the following bash script?
 ```{bash}
@@ -73,7 +82,16 @@ do
   ls -l $datafile
 done
 ```
+**Answer** The output of the bash script is the list of files in the 'hosp' folder that start with 'a', 'l', or 'pa' and end with '.gz'.
+
 Display the number of lines in each data file using a similar loop. (Hint: combine linux commands `zcat <` and `wc -l`.)
+```{bash}
+#| eval: false
+for datafile in ~/mimic/hosp/{a,l,pa}*.gz
+do
+   echo "Number of lines in $datafile: $(zcat < $datafile | wc -l)"
+done
+```
 
 5. Display the first few lines of `admissions.csv.gz`. How many rows are in this data file? How many unique patients (identified by `subject_id`) are in this data file? Do they match the number of patients listed in the `patients.csv.gz` file? (Hint: combine Linux commands `zcat <`, `head`/`tail`, `awk`, `sort`, `uniq`, `wc`, and so on.)
 
