@@ -136,13 +136,15 @@ time wc -l ~/mimic/hosp/labevents.csv
 wget -nc http://www.gutenberg.org/cache/epub/42671/pg42671.txt
 ```
 Explain what `wget -nc` does. Do **not** put this text file `pg42671.txt` in Git. Complete the following loop to tabulate the number of times each of the four characters is mentioned using Linux commands.
+
+**Answer** `wget -nc` downloads the file from the url if it does not already exist in the current directory. The following loop tabulates the number of times each of the four characters is mentioned using Linux commands: ( the number of Elizabeth is 634, Jane is 293, Lydia is 171, and Darcy is 416).
 ```{bash}
 #| eval: false
 wget -nc http://www.gutenberg.org/cache/epub/42671/pg42671.txt
 for char in Elizabeth Jane Lydia Darcy
 do
   echo $char:
-  # some bash commands here
+  grep -i -o $char pg42671.txt | wc -l
 done
 ```
 

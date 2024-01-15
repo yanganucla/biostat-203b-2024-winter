@@ -3178,12 +3178,13 @@ loaded via a namespace (and not attached):
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Explain what <code>wget -nc</code> does. Do <strong>not</strong> put this text file <code>pg42671.txt</code> in Git. Complete the following loop to tabulate the number of times each of the four characters is mentioned using Linux commands.</p>
+<p><strong>Answer</strong> <code>wget -nc</code> downloads the file from the url if it does not already exist in the current directory. The following loop tabulates the number of times each of the four characters is mentioned using Linux commands: ( the number of Elizabeth is 634, Jane is 293, Lydia is 171, and Darcy is 416).</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> char <span class="kw">in</span> Elizabeth Jane Lydia Darcy</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="cf">do</span></span>
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="bu">echo</span> <span class="va">$char</span>:</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># some bash commands here</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">grep</span> <span class="at">-i</span> <span class="at">-o</span> <span class="va">$char</span> pg42671.txt <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span>
 <span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <ol start="2" type="1">
