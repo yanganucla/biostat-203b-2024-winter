@@ -119,6 +119,15 @@ zcat < ~/mimic/hosp/admissions.csv.gz | awk -F, '{print $13}' | sort | uniq -c
 
 7. _To compress, or not to compress. That's the question._ Let's focus on the big data file `labevents.csv.gz`. Compare compressed gz file size to the uncompressed file size. Compare the run times of `zcat < ~/mimic/labevents.csv.gz | wc -l` versus `wc -l labevents.csv`. Discuss the trade off between storage and speed for big data files. (Hint: `gzip -dk < FILENAME.gz > ./FILENAME`. Remember to delete the large `labevents.csv` file after the exercise.)
 
+**Answer** The compressed gz file size is 1.8 GB and the uncompressed file size is 13 GB. The run time of `zcat < ~/mimic/labevents.csv.gz | wc -l` is 18 seconds and the run time of `wc -l labevents.csv` is 6 seconds. The trade off between storage and speed for big data files is that the compressed file takes up less storage space but takes longer to run and the uncompressed file takes up more storage space but takes less time to run.
+```{bash}
+#| eval: false
+ls -lh ~/mimic/hosp/labevents.csv.gz
+ls -lh ~/mimic/hosp/labevents.csv
+time zcat < ~/mimic/hosp/labevents.csv.gz | wc -l
+time wc -l ~/mimic/hosp/labevents.csv
+```
+
 ## Q4. Who's popular in Price and Prejudice
 
 1. You and your friend just have finished reading *Pride and Prejudice* by Jane Austen. Among the four main characters in the book, Elizabeth, Jane, Lydia, and Darcy, your friend thinks that Darcy was the most mentioned. You, however, are certain it was Elizabeth. Obtain the full text of the novel from <http://www.gutenberg.org/cache/epub/42671/pg42671.txt> and save to your local folder. 
