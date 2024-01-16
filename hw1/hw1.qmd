@@ -168,13 +168,32 @@ echo 'hello, world' >> test2.txt
 head -n "$2" "$1" | tail -n "$3"
 ```
 Using `chmod` to make the file executable by the owner, and run
+
 ```{bash}
 #| eval: false
 ./middle.sh pg42671.txt 20 5
 ```
-
 Explain the output. Explain the meaning of `"$1"`, `"$2"`, and `"$3"` in this shell script. Why do we need the first line of the shell script?
-**Answer** The output is the 5 lines starting from line 20 of the file pg42671.txt. `"$1"` is the first argument, `"$2"` is the second argument, and `"$3"` is the third argument. We need the first line of the shell script to tell the computer that this is a shell script.
+**Answer**
+the output:
+Editor: R. W. Chapman
+Release date: May 9, 2013 [eBook #42671]
+Language: English 
+
+The explaination of the output:
+	•	head -n "$2" "$1": This command extracts the first $2 lines from the file       specified by "$1" (filename).
+	•	| (pipe): Redirects the output of the head command to the input of the next     command.
+	•	tail -n "$3": Takes the last $3 lines from the output of the head command.
+	•	pg42671.txt: The value of "$1", representing the filename.
+	•	20: The value of "$2", specifying the end line.
+	•	5: The value of "$3", specifying the number of lines.
+	
+Meaning of "$1", "$2", and "$3":
+	•	"$1" is the filename (in this case, “pg42671.txt”).
+	•	"$2" is the end line (20 in this case).
+	•	"$3" is the number of lines (5 in this case).
+
+The first line of the script (#!/bin/sh) is a shebang and is necessary to specify the shell interpreter for the script. It ensures that the script is executed using the Bourne shell.
 
 ## Q5. More fun with Linux
 
