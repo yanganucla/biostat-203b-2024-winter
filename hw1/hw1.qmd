@@ -167,13 +167,12 @@ echo 'hello, world' >> test2.txt
 # Usage: bash middle.sh filename end_line num_lines
 head -n "$2" "$1" | tail -n "$3"
 ```
-
 Using `chmod` to make the file executable by the owner, and run
 ```{bash}
 #| eval: false
-chmod +x middle.sh
 ./middle.sh pg42671.txt 20 5
 ```
+
 Explain the output. Explain the meaning of `"$1"`, `"$2"`, and `"$3"` in this shell script. Why do we need the first line of the shell script?
 **Answer** The output is the 5 lines starting from line 20 of the file pg42671.txt. `"$1"` is the first argument, `"$2"` is the second argument, and `"$3"` is the third argument. We need the first line of the shell script to tell the computer that this is a shell script.
 
