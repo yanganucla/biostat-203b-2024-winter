@@ -158,6 +158,7 @@ and
 #| eval: false
 echo 'hello, world' >> test2.txt
 ```
+**Answer** The first command overwrites the file if it already exists and the second command appends the text to the end of the file if it already exists.
 
 3. Using your favorite text editor (e.g., `vi`), type the following and save the file as `middle.sh`:
 ```{bash eval=FALSE}
