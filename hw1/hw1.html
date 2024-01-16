@@ -3211,7 +3211,10 @@ loaded via a namespace (and not attached):
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb15"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./middle.sh</span> pg42671.txt 20 5</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Explain the output. Explain the meaning of <code>&quot;$1&quot;</code>, <code>&quot;$2&quot;</code>, and <code>&quot;$3&quot;</code> in this shell script. Why do we need the first line of the shell script? <strong>Answer</strong> The output is the 5 lines starting from line 20 of the file pg42671.txt. <code>&quot;$1&quot;</code> is the first argument, <code>&quot;$2&quot;</code> is the second argument, and <code>&quot;$3&quot;</code> is the third argument. We need the first line of the shell script to tell the computer that this is a shell script.</p>
+<p>Explain the output. Explain the meaning of <code>&quot;$1&quot;</code>, <code>&quot;$2&quot;</code>, and <code>&quot;$3&quot;</code> in this shell script. Why do we need the first line of the shell script? <strong>Answer</strong> the output: Editor: R. W. Chapman Release date: May 9, 2013 [eBook #42671] Language: English</p>
+<p>The explaination of the output: • head -n “$2” “$1”: This command extracts the first $2 lines from the file specified by “$1” (filename). • | (pipe): Redirects the output of the head command to the input of the next command. • tail -n “$3”: Takes the last $3 lines from the output of the head command. • pg42671.txt: The value of “$1”, representing the filename. • 20: The value of “$2”, specifying the end line. • 5: The value of “$3”, specifying the number of lines.</p>
+<p>Meaning of “$1”, “$2”, and “$3”: • “$1” is the filename (in this case, “pg42671.txt”). • “$2” is the end line (20 in this case). • “$3” is the number of lines (5 in this case).</p>
+<p>The first line of the script (#!/bin/sh) is a shebang and is necessary to specify the shell interpreter for the script. It ensures that the script is executed using the Bourne shell.</p>
 </section>
 <section id="q5.-more-fun-with-linux" class="level2">
 <h2 class="anchored" data-anchor-id="q5.-more-fun-with-linux">Q5. More fun with Linux</h2>
