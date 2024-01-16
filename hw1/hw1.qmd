@@ -167,16 +167,39 @@ echo 'hello, world' >> test2.txt
 # Usage: bash middle.sh filename end_line num_lines
 head -n "$2" "$1" | tail -n "$3"
 ```
+
 Using `chmod` to make the file executable by the owner, and run
 ```{bash}
 #| eval: false
+chmod +x middle.sh
 ./middle.sh pg42671.txt 20 5
 ```
 Explain the output. Explain the meaning of `"$1"`, `"$2"`, and `"$3"` in this shell script. Why do we need the first line of the shell script?
+**Answer** The output is the 5 lines starting from line 20 of the file pg42671.txt. `"$1"` is the first argument, `"$2"` is the second argument, and `"$3"` is the third argument. We need the first line of the shell script to tell the computer that this is a shell script.
 
 ## Q5. More fun with Linux
 
 Try following commands in Bash and interpret the results: `cal`, `cal 2024`, `cal 9 1752` (anything unusual?), `date`, `hostname`, `arch`, `uname -a`, `uptime`, `who am i`, `who`, `w`, `id`, `last | head`, `echo {con,pre}{sent,fer}{s,ed}`, `time sleep 5`, `history | tail`.
+```{bash}
+#| eval: false
+cal
+cal 2024
+cal 9 1752
+date
+hostname
+arch
+uname -a
+uptime
+who am i
+who
+w
+id
+last | head
+echo {con,pre}{sent,fer}{s,ed}
+time sleep 5
+history | tail
+```
+**Answer** `cal` displays the calendar for the current month. `cal 2024` displays the calendar for the year 2024. `cal 9 1752` displays the calendar for September 1752. The calendar for September 1752 is unusual because the calendar was changed in September 1752. `date` displays the current date and time. `hostname` displays the name of the computer. `arch` displays the architecture of the computer. `uname -a` displays the operating system. `uptime` displays the time since the computer was last booted. `who am i` displays the user name. `who` displays the users currently logged in. `w` displays the users currently logged in and what they are doing. `id` displays the user id. `last | head` displays the last users logged in. `echo {con,pre}{sent,fer}{s,ed}` displays the words consents, conferred, presents, presented, presents, and presented. `time sleep 5` displays the time it takes to run the command sleep 5. `history | tail` displays the last 10 commands run.
 
 ## Q6. Book
 
