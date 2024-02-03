@@ -87,6 +87,36 @@ object_size(admissions)
 
 Re-ingest `admissions.csv.gz` by indicating appropriate column data types in `read_csv`. Does the run time change? How much memory does the result tibble use? (Hint: `col_types` argument in `read_csv`.)
 
+**Answer**
+The run time change, it become faster. The result tibble use 55.31 MB memory, which is the same.
+```{r}
+admissions <- read.csv("~/mimic/hosp/admissions.csv.gz") |> print(width = Inf)
+```
+
+```{r}
+
+system.time(admissions <- read_csv("~/mimic/hosp/admissions.csv.gz", 
+                                   col_types = cols(
+                                                   subject_id = col_integer(), 
+                                                   hadm_id = col_integer(), 
+                                                   admittime = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+                                                   dischtime = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+                                                   admission_type = col_character(), 
+                                                   admission_location = col_character(), 
+                                                   discharge_location = col_character(), 
+                                                   insurance = col_character(), 
+                                                   language = col_character(), 
+                                                                            marital_status = col_character(),
+                                                   race = col_character(), 
+                                                   edregtime = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+                                                   edouttime = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+                                                   
+                                                   hospital_expire_flag = col_integer())))
+object_size(admissions)
+   
+```
+
+
 ## Q2. Ingest big data files
 
 <p align="center">
