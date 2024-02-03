@@ -57,6 +57,15 @@ ls -l ~/mimic/icu/
 
 ## Q1. `read.csv` (base R) vs `read_csv` (tidyverse) vs `fread` (data.table)
 
+**Answer**
+
+```{r}
+system.time(admissions <- read.csv("~/mimic/hosp/admissions.csv.gz"))
+pryr::object_size(admissions)
+```
+
+
+
 ### Q1.1 Speed, memory, and data types
 
 There are quite a few utilities in R for reading plain text data files. Let us test the speed of reading a moderate sized compressed csv file, `admissions.csv.gz`, by three functions: `read.csv` in base R, `read_csv` in tidyverse, and `fread` in the data.table package.
