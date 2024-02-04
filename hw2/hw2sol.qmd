@@ -174,7 +174,27 @@ Our first strategy to handle this big data file is to make a subset of the `labe
 
 In later exercises, we will only be interested in the following lab items: creatinine (50912), potassium (50971), sodium (50983), chloride (50902), bicarbonate (50882), hematocrit (51221), white blood cell count (51301), and glucose (50931) and the following columns: `subject_id`, `itemid`, `charttime`, `valuenum`. Write a Bash command to extract these columns and rows from `labevents.csv.gz` and save the result to a new file `labevents_filtered.csv.gz` in the current working directory. (Hint: use `zcat <` to pipe the output of `labevents.csv.gz` to `awk` and then to `gzip` to compress the output. To save render time, put `#| eval: false` at the beginning of this code chunk.)
 
-Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`?
+```{bash}
+#| eval: false 
+zcat < ~/mimic/hosp/labevents.csv.gz | awk -F, 'BEGIN {OFS=","} {if ($5 == 50912 || $5 == 50971 || $5 == 50983 || $5 == 50902 || $5 == 50882 || $5 == 51221 || $5 == 51301 || $5 == 50931) print $2,$5,$7,$10}' | gzip > labevents_filtered.csv.gz
+```
+
+Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`? 
+
+**Answer**
+The first 10 lines of the new file `labevents_filtered.csv.gz` are:
+```{bash}
+zcat < labevents_filtered.csv.gz | head -10
+
+```
+The number of lines in this new file is 24855908. It takes 0.5 minutes for `read_csv` to ingest `labevents_filtered.csv.gz`.
+
+```{r}
+system.time(labevents <- read_csv("labevents_filtered.csv.gz"))
+
+```
+
+
 
 ### Q2.4 Ingest `labevents.csv` by Apache Arrow
 
