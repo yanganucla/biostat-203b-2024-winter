@@ -153,6 +153,17 @@ system.time(labevents <- read_csv("~/mimic/hosp/labevents.csv.gz"))
 
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
 
+**Answer**
+It does not solve the ingestion issue. The reason is that the file is still too big to be read by `read_csv`.
+
+```{r}
+system.time(labevents <- read_csv("~/mimic/hosp/labevents.csv.gz", 
+                                  col_select = c(subject_id, itemid, charttime, valuenum)))
+
+
+```
+
+
 ### Q2.3 Ingest subset of `labevents.csv.gz`
 
 <p align="center">
