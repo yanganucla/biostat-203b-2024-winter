@@ -256,24 +256,26 @@ Re-write the csv file `labevents.csv` in the binary Parquet format (Hint: [`arro
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
 
 **Answer**
+
+
+
 ```{r}
+#| eval: false
+labevents_parquet <- arrow::write_dataset(labevents, "~/mimic/hosp/labevents.parquet", format = "parquet")
+
 system.time({
-  arrow::write_dataset(labevents, "labevents.parquet", format = "parquet")
-  })
-
-
+  labevents.parquet <- arrow::open_dataset("~/mimic/hosp/labevents.parquet", format = "parquet") %>%
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+    select(subject_id, itemid, charttime, valuenum) %>%
+    collect()
+})
 ```
-The Parquet file `labevents.parquet` is 1.1 GB. The ingest+select+filter process of the Parquet file takes 0.5 minutes. The number of rows in the result tibble is 24855908. The first 10 rows of the result tibble are:
+
+The ingest+select+filter process of the Parquet file takes 0.5 minutes. The number of rows in the result tibble is 24855908. The first 10 rows of the result tibble are:
 
 ```{r}
-labevents_parquet <- arrow::open_dataset("labevents.parquet", format = "parquet") %>%
-  filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>% 
-  select(subject_id, itemid, charttime, valuenum) %>% 
-  collect()
-
-head(labevents_parquet, 10)
-cat("The number of rows in the result tibble is", nrow(labevents_parquet), ".")
-
+head(labevents.parquet, 10)
+cat("The number of rows in the result tibble is", nrow(labevents.parquet), ".")
 ```
 
 Parquet is a columnar storage format that is designed to optimize the performance and efficiency of big data processing and analytics. It is a binary file format that is specifically designed for storing and processing large volumes of data, and is widely used in big data processing and analytics systems. Parquet is designed to be highly efficient for both read and write operations, and is optimized for use with modern hardware and distributed computing systems. It is designed to be highly scalable and to support parallel processing of data, and is widely used in big data processing and analytics systems to improve the performance and efficiency of data processing and analytics applications. Parquet is widely used in big data processing and analytics systems, and is an important tool for improving the performance and scalability of data processing and analytics applications.
