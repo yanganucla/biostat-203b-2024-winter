@@ -90,7 +90,7 @@ Re-ingest `admissions.csv.gz` by indicating appropriate column data types in `re
 **Answer**
 The run time change, it become faster. The result tibble use 55.31 MB memory, which is the same.
 ```{r}
-admissions <- read.csv("~/mimic/hosp/admissions.csv.gz") |> print(width = Inf)
+system.time(admissions <- read.csv("~/mimic/hosp/admissions.csv.gz") |> print(width = Inf))
 ```
 
 ```{r}
@@ -225,7 +225,7 @@ zcat < ~/mimic/hosp/labevents.csv.gz > labevents.csv
 library(arrow)
 library(dplyr)
 system.time({
-  labevents <- arrow::open_dataset("labevents.csv", format = "csv") %>%
+  labevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw2/labevents.csv", format = "csv") %>%
   filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>% 
   select(subject_id, itemid, charttime, valuenum) %>% 
   collect()
@@ -261,10 +261,10 @@ Write a few sentences to explain what is the Parquet format. Imagine you want to
 
 ```{r}
 #| eval: false
-labevents.parquet <- arrow::write_dataset(labevents <- arrow::open_dataset("labevents.csv", format = "csv"), "~/mimic/hosp/labevents.parquet", format = "parquet")
+labevents.parquet <- arrow::write_dataset(labevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw2/labevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw2/labevents.parquet", format = "parquet")
 
 system.time({
-  labevents.parquet <- arrow::open_dataset("~/mimic/hosp/labevents.parquet", format = "parquet") %>%
+  labevents.parquet <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw2/labevents.parquet", format = "parquet") %>%
     filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
     select(subject_id, itemid, charttime, valuenum) %>%
     collect()
@@ -296,7 +296,7 @@ Write a few sentences to explain what is DuckDB. Imagine you want to explain it 
 ```{r}
 #| eval: false
 # Read Parquet file using Arrow
-labevents_parquet <- arrow::open_dataset("~/mimic/hosp/labevents.parquet", format = "parquet")
+labevents_parquet <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw2/labevents.parquet", format = "parquet")
 # Convert Arrow result to DuckDB table
 system.time({
   labevents_duckdb_table <- arrow::to_duckdb(labevents_parquet, duckdb_conn, "labevents_duckdb_table") %>% 
@@ -344,7 +344,7 @@ zcat < ~/mimic/icu/chartevents.csv.gz > chartevents.csv
 
 
 ```{r}
-chartevents <- arrow::open_dataset("chartevents.csv", format = "csv") %>%
+chartevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw2/chartevents.csv", format = "csv") %>%
   filter(itemid %in% c(220045, 220181, 220179, 223761, 220210)) %>%
   select(subject_id, itemid, charttime, value) %>%
   collect()
