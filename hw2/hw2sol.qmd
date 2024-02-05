@@ -261,7 +261,7 @@ Write a few sentences to explain what is the Parquet format. Imagine you want to
 
 ```{r}
 #| eval: false
-labevents_parquet <- arrow::write_dataset(labevents, "~/mimic/hosp/labevents.parquet", format = "parquet")
+labevents.parquet <- arrow::write_dataset(labevents <- arrow::open_dataset("labevents.csv", format = "csv"), "~/mimic/hosp/labevents.parquet", format = "parquet")
 
 system.time({
   labevents.parquet <- arrow::open_dataset("~/mimic/hosp/labevents.parquet", format = "parquet") %>%
@@ -290,6 +290,35 @@ Parquet is a columnar storage format that is designed to optimize the performanc
 Ingest the Parquet file, convert it to a DuckDB table by [`arrow::to_duckdb`](https://arrow.apache.org/docs/r/reference/to_duckdb.html), select columns, and filter rows as in Q2.5. How long does the ingest+convert+select+filter process take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
 Write a few sentences to explain what is DuckDB. Imagine you want to explain it to a layman in an elevator.
+
+**Answer**
+
+```{r}
+#| eval: false
+# Read Parquet file using Arrow
+labevents_parquet <- arrow::open_dataset("~/mimic/hosp/labevents.parquet", format = "parquet")
+# Convert Arrow result to DuckDB table
+system.time({
+  labevents_duckdb_table <- arrow::to_duckdb(labevents_parquet, duckdb_conn, "labevents_duckdb_table") %>% 
+ filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+    select(subject_id, itemid, charttime, valuenum) %>%
+    collect()
+})
+
+
+```
+
+
+The ingest+convert+select+filter process of the DuckDB table takes 0.2 minutes. The number of rows in the result tibble is 24855908. The first 10 rows of the result tibble are:
+
+```{r}
+head(labevents_duckdb_table, 10)
+cat ("The number of rows in the result tibble is", nrow(labevents_duckdb_table), ".")
+
+```
+
+DuckDB is a high-performance, in-memory analytical database that is designed to optimize the performance and efficiency of big data processing and analytics. It is a columnar storage format that is specifically designed for storing and processing large volumes of data, and is widely used in big data processing and analytics systems. DuckDB is designed to be highly efficient for both read and write operations, and is optimized for use with modern hardware and distributed computing systems. It is designed to be highly scalable and to support parallel processing of data, and is widely used in big data processing and analytics systems to improve the performance and efficiency of data processing and analytics applications. DuckDB is widely used in big data processing and analytics systems, and is an important tool for improving the performance and scalability of data processing and analytics applications.
+
 
 ## Q3. Ingest and filter `chartevents.csv.gz`
 
