@@ -3103,16 +3103,16 @@ vertical-align: -.125em;
 <p>Which function is fastest? Is there difference in the (default) parsed data types? How much memory does each resultant dataframe or tibble use? (Hint: <code>system.time</code> measures run times; <code>pryr::object_size</code> measures memory usage.)</p>
 <p><strong>Answer</strong> <code>fread</code> in the data.table package is the fastest. The default parsed data types are different. The resultant dataframe or tibble use different memory usage： 158.71 MB for <code>read.csv</code> in base R, 55.31 MB for <code>read_csv</code> in tidyverse, and 50.13 MB for <code>fread</code> in the data.table package.</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">system.time</span><span class="er">(</span><span class="ex">admissions</span> <span class="op">&lt;</span>- read.csv<span class="er">(</span><span class="st">&quot;~/mimic/hosp/admissions.csv.gz&quot;</span><span class="kw">))</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">object_size</span><span class="er">(</span><span class="ex">admissions</span><span class="kw">)</span></span>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>(admissions <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;~/mimic/hosp/admissions.csv.gz&quot;</span>))</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">object_size</span>(admissions)</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="ex">library</span><span class="er">(</span><span class="ex">tidyverse</span><span class="kw">)</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="ex">system.time</span><span class="er">(</span><span class="ex">admissions</span> <span class="op">&lt;</span>- read_csv<span class="er">(</span><span class="st">&quot;~/mimic/hosp/admissions.csv.gz&quot;</span><span class="kw">))</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="ex">object_size</span><span class="er">(</span><span class="ex">admissions</span><span class="kw">)</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>(admissions <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;~/mimic/hosp/admissions.csv.gz&quot;</span>))</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">object_size</span>(admissions)</span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="ex">library</span><span class="er">(</span><span class="ex">data.table</span><span class="kw">)</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="ex">system.time</span><span class="er">(</span><span class="ex">admissions</span> <span class="op">&lt;</span>- fread<span class="er">(</span><span class="st">&quot;~/mimic/hosp/admissions.csv.gz&quot;</span><span class="kw">))</span></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="ex">object_size</span><span class="er">(</span><span class="ex">admissions</span><span class="kw">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(data.table)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>(admissions <span class="ot">&lt;-</span> <span class="fu">fread</span>(<span class="st">&quot;~/mimic/hosp/admissions.csv.gz&quot;</span>))</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="fu">object_size</span>(admissions)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="q1.2-user-supplied-data-types" class="level3">

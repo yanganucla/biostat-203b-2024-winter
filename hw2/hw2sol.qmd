@@ -67,7 +67,7 @@ Which function is fastest? Is there difference in the (default) parsed data type
 `fread` in the data.table package is the fastest. The default parsed data types are different. The resultant dataframe or tibble use different memory usage： 158.71 MB for `read.csv` in base R, 55.31 MB for `read_csv` in tidyverse, and 50.13 MB for `fread` in the data.table package.
 
 
-```{bash}
+```{r}
 system.time(admissions <- read.csv("~/mimic/hosp/admissions.csv.gz"))
 object_size(admissions)
 
