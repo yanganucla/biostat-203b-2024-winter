@@ -59,6 +59,7 @@ sid_adt <- read_csv("~/mimic/hosp/transfers.csv.gz") |>
   filter(subject_id == sid) |>
   print(width = Inf)
 ```
+
 ```{r}
 sid_procedure <- read_csv("~/mimic/hosp/procedures_icd.csv.gz") |>
   filter(subject_id == sid) |>
@@ -75,29 +76,32 @@ zcat < ~/mimic/hosp/labevents.csv.gz > labevents.csv
 #| eval: false
 sid <- 10013310 
 sid_lab <- arrow::write_dataset(labevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet")
-  sib_lab <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet") %>%
+  sid_lab <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet") %>%
     filter(subject_id %in% sid)%>%
-    collect()
+    collect() 
 ```
 
 ```{r}
-head(sib_lab, 10)
+head(sid_lab, 10)
+```
+```{r}
+sid_procedure$chartdate <- as.POSIXct(sid_procedure$chartdate)
+sid_lab$charttime <- as.POSIXct(sid_lab$charttime)
 ```
 
 
 ```{r}
-sid_adt %>%
-  filter(eventtype != "discharge") |>
-  ggplot() +
-  geom_segment(aes(
-    x = intime, 
-    xend = outtime, 
-    y = "ADT", 
-    yend = "ADT", 
-    color = careunit,
-    linewidth = str_detect(careunit, "(ICUICCU)"))
-    )+
-  labs(title = "Patient 10013310", subtitle = "Top 3 diagnoses: ...", x = "", y = "") +
+ggplot() +
+  geom_segment(data = sid_adt %>%
+                 filter(eventtype != "discharge"), 
+               aes(x = intime, xend = outtime, y = "ADT", yend = "ADT", color = careunit, linewidth = str_detect(careunit, "(ICU|CCU)")),
+               lineend = "square") +
+  geom_point(data = sid_lab, aes(x = charttime, y = "Lab"), shape = 3, size = 3, color = "black") +
+  geom_point(data = sid_procedure, aes(x = chartdate, y = "Procedure"), shape = 17, size = 3, color = "black") +
+  labs(title = "Patient 10013310",
+       subtitle = "intracranial abscess, subarachnoid hemorrhage, acute respiratory failure",
+       x = "Calendar Time",
+       y = "") +
   theme_minimal()
 ```
 
