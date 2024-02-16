@@ -98,8 +98,8 @@ ggplot() +
                lineend = "square") +
   geom_point(data = sid_lab, aes(x = charttime, y = "Lab"), shape = 3, size = 3, color = "black") +
   geom_point(data = sid_procedure, aes(x = chartdate, y = "Procedure"), shape = 17, size = 3, color = "black") +
-  labs(title = "Patient 10013310",
-       subtitle = "intracranial abscess, subarachnoid hemorrhage, acute respiratory failure",
+  labs(title = "Patient 10013310,F,70 years old",
+       subtitle = "Cholera due to vibrio cholerae, Cholera due to vibrio cholerae el tor, Cholera, unspecified",
        x = "Calendar Time",
        y = "") +
   theme_minimal()
@@ -112,7 +112,27 @@ ggsave("10013310_adt.png")
 ```
 
 
+```{r}
+sid_dia <- read_csv("~/mimic/hosp/diagnoses_icd.csv.gz") |>
+  filter(subject_id == sid) |>
+  print(width = Inf)
+```
 
+```{r}
+sid_dicd <- read_csv("~/mimic/hosp/d_icd_diagnoses.csv.gz") |>
+  print(width = Inf)
+```
+
+```{r}
+sid_proc <- read_csv("~/mimic/hosp/d_icd_procedures.csv.gz") |>
+  print(width = Inf)
+```
+
+```{r}
+sid_pat <- read_csv("~/mimic/hosp/patients.csv.gz") |>
+  filter(subject_id == sid) |>
+  print(width = Inf)
+```
 
 ### Q1.2 ICU stays
 
@@ -121,6 +141,15 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 ![](10001217_icu.png)
 
 Do a similar visualization for the patient `10013310`.
+
+```{r}
+sid_pat <- read_csv("~/mimic/icu/icustays.csv.gz") |>
+  filter(subject_id == sid) |>
+  print(width = Inf)
+```
+
+
+
 
 ## Q2. ICU stays
 
@@ -132,6 +161,13 @@ zcat < ~/mimic/icu/icustays.csv.gz | head
 ### Q2.1 Ingestion
 
 Import `icustays.csv.gz` as a tibble `icustays_tble`. 
+
+```{r}
+icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz") |>
+  print(width = Inf)
+```
+
+
 
 ### Q2.2 Summary and visualization
 
