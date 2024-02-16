@@ -168,10 +168,28 @@ icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz") |>
 ```
 
 
-
 ### Q2.2 Summary and visualization
 
-How many unique `subject_id`? Can a `subject_id` have multiple ICU stays? Summarize the number of ICU stays per `subject_id` by graphs. 
+How many unique `subject_id`? 
+
+```{r}
+icustays_tble %>%
+  distinct(subject_id) %>%
+  count()
+```
+
+Can a `subject_id` have multiple ICU stays? Summarize the number of ICU stays per `subject_id` by graphs. 
+
+```{r}
+icustays_tble %>%
+  count(subject_id) %>%
+  ggplot(aes(x = n)) +
+  geom_bar() +
+  labs(title = "Number of ICU stays per patient",
+       x = "Number of ICU stays",
+       y = "Number of patients") +
+  theme_minimal()
+```
 
 ## Q3. `admissions` data
 
