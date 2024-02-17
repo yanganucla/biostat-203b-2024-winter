@@ -202,6 +202,12 @@ zcat < ~/mimic/hosp/admissions.csv.gz | head
 
 Import `admissions.csv.gz` as a tibble `admissions_tble`.
 
+```{r}
+admissions_tble <- read_csv("~/mimic/hosp/admissions.csv.gz") |>
+  print(width = Inf)
+```
+
+
 ### Q3.2 Summary and visualization
 
 Summarize the following information by graphics and explain any patterns you see.
@@ -210,10 +216,58 @@ Summarize the following information by graphics and explain any patterns you see
 - admission hour (anything unusual?)  
 - admission minute (anything unusual?)  
 - length of hospital stay (from admission to discharge) (anything unusual?)  
+- age at admission (anything unusual?)  
+
+```{r}
+admissions_tble %>%
+  count(subject_id) %>%
+  ggplot(aes(x = n)) +
+  geom_bar() +
+  labs(title = "Number of admissions per patient",
+       x = "Number of admissions",
+       y = "Number of patients") +
+  theme_minimal()
+```
+
+```{r}
+admissions_tble %>%
+  ggplot(aes(x = hour(admittime))) +
+  geom_bar() +
+  labs(title = "Admission hour",
+       x = "Hour",
+       y = "Count") +
+  theme_minimal()
+```
+From the above graph, 0 AM and 7 AM appear to be unusual since the frequencies are higher than other times despite a late night and an early morning. That may be caused by some operation of the hospital.
+
+```{r}
+admissions_tble %>%
+  ggplot(aes(x = minute(admittime))) +
+  geom_bar() +
+  labs(title = "Admission minute",
+       x = "Minute",
+       y = "Count") +
+  theme_minimal()
+```
+From the above graph, 0、16、30、45 minutes appears to be unusual since the frequency is higher than other minutes. That may be some problem at first, but be solved with time going.
+
+
+```{r}
+admissions_tble %>%
+  mutate(length_of_stay = dischtime - admittime) %>%
+  ggplot(aes(x = length_of_stay)) +
+  geom_histogram() +
+  labs(title = "Length of hospital stay",
+       x = "Length of stay",
+       y = "Count") +
+  theme_minimal()
+```
+
 
 According to the [MIMIC-IV documentation](https://mimic.mit.edu/docs/iv/about/concepts/#date-shifting), 
 
 > All dates in the database have been shifted to protect patient confidentiality. Dates will be internally consistent for the same patient, but randomly distributed in the future. Dates of birth which occur in the present time are not true dates of birth. Furthermore, dates of birth which occur before the year 1900 occur if the patient is older than 89. In these cases, the patient’s age at their first admission has been fixed to 300.
+
 
 ## Q4. `patients` data
 
