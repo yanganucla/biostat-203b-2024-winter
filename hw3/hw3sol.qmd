@@ -263,6 +263,22 @@ admissions_tble %>%
   theme_minimal()
 ```
 
+```{r}
+patients_tble <- read_csv("~/mimic/hosp/patients.csv.gz") |>
+  print(width = Inf)
+```
+
+```{r}
+patients_tble %>%
+  ggplot(aes(x = anchor_age)) +
+  geom_histogram() +
+  labs(title = "Age distribution of patients",
+       x = "Age",
+       y = "Count") +
+  theme_minimal()
+
+```
+
 
 According to the [MIMIC-IV documentation](https://mimic.mit.edu/docs/iv/about/concepts/#date-shifting), 
 
@@ -280,9 +296,51 @@ zcat < ~/mimic/hosp/patients.csv.gz | head
 
 Import `patients.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/hosp/patients/>) as a tibble `patients_tble`.
 
+```{r}
+patients_tble <- read_csv("~/mimic/hosp/patients.csv.gz") |>
+  print(width = Inf)
+
+```
+
 ### Q4.2 Summary and visualization
 
 Summarize variables `gender` and `anchor_age` by graphics, and explain any patterns you see.
+
+
+```{r}
+patients_tble %>%
+  ggplot(aes(x = gender)) +
+  geom_bar() +
+  labs(title = "Number of patients class by gender",
+       x = "gender",
+       y = "Number of patients") +
+  theme_minimal()
+```
+
+```{r}
+patients_tble %>%
+  ggplot(aes(x = anchor_age)) +
+  geom_histogram() +
+  labs(title = "Age distribution of patients",
+       x = "Age",
+       y = "Count") +
+  theme_minimal()
+
+```
+the number of female patients is slightly higher than the male, and the age distribution of patients is right-skewed, which means that most patients are young.
+
+```{r}
+library(tidyverse)
+library(gridExtra)
+p1 <- ggplot(data = patients_tble) + 
+  geom_bar(mapping = aes(x = anchor_age, fill = gender)) +
+  labs(title = "") +
+  labs(x = "Anchor age (years)", fill = "Gender")
+max(patients_tble$anchor_age)
+grid.arrange(p1, ncol = 2)
+```
+after merge them together, we can see that many ages have more females;
+There is a significant number of patients with the maximum age (91 years).
 
 ## Q5. Lab results
 
