@@ -348,7 +348,6 @@ There is a significant number of patients with the maximum age (91 years).
 ```{bash}
 zcat < ~/mimic/hosp/labevents.csv.gz | head
 ```
-
 `d_labitems.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/hosp/d_labitems/>) is the dictionary of lab measurements. 
 ```{bash}
 zcat < ~/mimic/hosp/d_labitems.csv.gz | head
@@ -360,6 +359,41 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
+
+```{r}
+labevents_tble1 <- arrow::write_dataset(labevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw2/labevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw2/labevents_pq", format = "parquet")
+
+  labevents_tble1 <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet") %>%
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+    collect() 
+```
+
+```{r}
+icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
+  print(width = Inf)
+```
+
+
+
+```{r}
+# Merge filtered_labevents with icustays_tble
+merged_data <- merge(icustays_tble, labevents_tble1, by = c("subject_id"), all.x = TRUE)
+
+# Filter merged_data to keep only rows where storetime is before intime
+final_data <- merged_data %>%
+  group_by(subject_id) %>%
+  filter(storetime <= intime) %>%
+  arrange(subject_id, storetime) %>%
+  slice_tail(n = 1) %>%
+  ungroup()
+```
+
+```{r}
+labevents_tble <- final_data %>%
+  print(width = Inf)
+```
+![](labevents_tble.png)
+
 
 ## Q6. Vitals from charted events
 
