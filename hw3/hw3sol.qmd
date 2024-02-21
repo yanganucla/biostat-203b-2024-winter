@@ -123,29 +123,9 @@ ggplot() +
 # save the plot
 ggsave("10013310_adt.png")
 ```
+![](10013310_adt.png)
 
 
-```{r}
-sid_dia <- read_csv("~/mimic/hosp/diagnoses_icd.csv.gz") |>
-  filter(subject_id == sid) |>
-  print(width = Inf)
-```
-
-```{r}
-sid_dicd <- read_csv("~/mimic/hosp/d_icd_diagnoses.csv.gz") |>
-  print(width = Inf)
-```
-
-```{r}
-sid_proc <- read_csv("~/mimic/hosp/d_icd_procedures.csv.gz") |>
-  print(width = Inf)
-```
-
-```{r}
-sid_pat <- read_csv("~/mimic/hosp/patients.csv.gz") |>
-  filter(subject_id == sid) |>
-  print(width = Inf)
-```
 
 ### Q1.2 ICU stays
 
@@ -519,7 +499,8 @@ chartevents_tble <- chartevents_subset %>%
   ) %>%
   print(width = Inf)
 ```
-  
+
+
 ## Q7. Putting things together
 
 Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all ICU stays of adults (age at `intime` >= 18) and columns contain at least following variables
