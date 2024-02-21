@@ -370,12 +370,12 @@ zcat < ~/mimic/hosp/d_labitems.csv.gz | head
 
 We are interested in the lab measurements of creatinine (50912), potassium (50971), sodium (50983), chloride (50902), bicarbonate (50882), hematocrit (51221), white blood cell count (51301), and glucose (50931). Retrieve a subset of `labevents.csv.gz` that only containing these items for the patients in `icustays_tble`. Further restrict to the last available measurement (by `storetime`) before the ICU stay. The final `labevents_tble` should have one row per ICU stay and columns for each lab measurement.
 
-![](labevents_tble.png)
 
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
 
 ```{r}
+#| eval: false
 labevents_tble1 <- arrow::write_dataset(labevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw2/labevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw2/labevents_pq", format = "parquet")
 
   labevents_tble1 <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet") %>%
@@ -384,30 +384,52 @@ labevents_tble1 <- arrow::write_dataset(labevents <- arrow::open_dataset("~/Desk
 ```
 
 ```{r}
+d_labitems_tble <- read_csv("~/mimic/hosp/d_labitems.csv.gz") |>
+  print(width = Inf)
+```
+
+```{r}
 icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
   print(width = Inf)
 ```
 
 
-
 ```{r}
-# Merge filtered_labevents with icustays_tble
-merged_data <- merge(icustays_tble, labevents_tble1, by = c("subject_id"), all.x = TRUE)
-
-# Filter merged_data to keep only rows where storetime is before intime
-final_data <- merged_data %>%
+labevents_subset <- labevents_tble1 %>%
+  left_join(d_labitems_tble, by = "itemid") %>%
+  select(subject_id, hadm_id, itemid, valuenum, storetime, label)
+labevents_subset <- labevents_subset %>%
+  semi_join(icustays_tble, by = "subject_id") %>%
+  left_join(icustays_tble, by = "subject_id") %>%
+  select(subject_id, stay_id, itemid, valuenum, storetime, label, intime, outtime) 
+labevents_subset <- labevents_subset %>%
+  group_by(stay_id, itemid) %>%
+  arrange(desc(storetime)) %>%
+  slice(1) %>%
+  ungroup() %>%
+  pivot_wider(names_from = itemid, values_from = valuenum)
+```  
+```{r}
+labevents_tble <- labevents_subset %>%
+  filter(storetime >= intime, storetime <= outtime) %>%
   group_by(subject_id) %>%
-  filter(storetime <= intime) %>%
-  arrange(subject_id, storetime) %>%
-  slice_tail(n = 1) %>%
-  ungroup()
-```
-
-```{r}
-labevents_tble <- final_data %>%
+  arrange(desc(storetime), .by_group = TRUE) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  select(subject_id, everything()) %>% 
+  select(-c(storetime, intime, outtime, label)) %>%
+  rename(
+    creatinine = '50912',
+    potassium = '50971',
+    sodium = '50983',
+    chloride = '50902',
+    bicarbonate = '50882',
+    hematocrit = '51221',
+    white_blood_cell_count = '51301',
+    glucose = '50931'
+  ) %>%
   print(width = Inf)
 ```
-![](labevents_tble.png)
 
 
 ## Q6. Vitals from charted events
@@ -422,14 +444,6 @@ zcat < ~/mimic/icu/chartevents.csv.gz | head
 zcat < ~/mimic/icu/d_items.csv.gz | head
 ```
 
-```{r}
-d_items_tble <- read_csv("~/mimic/icu/d_items.csv.gz") |>
-  print(width = Inf)
-```
-```{r}
-icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
-  print(width = Inf)
-```
 
 We are interested in the vitals for ICU patients: heart rate (220045), systolic non-invasive blood pressure (220179), diastolic non-invasive blood pressure (220180), body temperature in Fahrenheit (223761), and respiratory rate (220210). Retrieve a subset of `chartevents.csv.gz` only containing these items for the patients in `icustays_tble`. Further restrict to the first vital measurement within the ICU stay. The final `chartevents_tble` should have one row per ICU stay and columns for each vital measurement. 
 
@@ -443,6 +457,7 @@ zcat < ~/mimic/icu/chartevents.csv.gz > chartevents.csv
 ```
 
 ```{r}
+#| eval: false
 chartevents_tble1 <- arrow::write_dataset(chartevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw3/chartevents_pq", format = "parquet")
 
   chartevents_tble1 <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents_pq", format = "parquet") %>%
