@@ -110,7 +110,7 @@ ggplot() +
   geom_point(data = sid_lab, aes(x = charttime, y = "Lab"), shape = 3, size = 3, color = "black") +
   geom_point(data = sid_procedures_final, aes(x = chartdate, y = "Procedure", shape = long_title), size = 3, color = "black") +
   labs(title = "Patient 10013310,F,70 years old",
-       subtitle = "Cholera due to vibrio cholerae, Cholera due to vibrio cholerae el tor, Cholera, unspecified",
+       subtitle = "Measurement of Cardiac Sampling and Pressure, Left Heart, Percutaneous Approach, Fluoroscopy of Multiple Coronary Arteries using Low Osmolar Contrast, Ultrasonography of Multiple Coronary Arteries, Intravasc",
        x = "Calendar Time",
        y = "") +
   theme_minimal(base_size = 5) +
@@ -157,21 +157,31 @@ Do a similar visualization for the patient `10013310`.
 
 
 ```{r}
-sid_adt <- read_csv("~/mimic/hosp/transfers.csv.gz") |>
-  filter(subject_id == sid) |>
+sid_item <- read_csv("~/mimic/icu/d_items.csv.gz") |>
   print(width = Inf)
 ```
 
 ```{r}
-sid_icu <- read_csv("~/mimic/icu/icustays.csv.gz") |>
-  filter(subject_id == sid) |>
+#| eval: false
+sid <- 10013310 
+chartevents_1.2 <- arrow::write_dataset(chartevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw3/chartevents_1.2", format = "parquet")
+
+  chartevents_1.2 <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents_1.2", format = "parquet") %>%
+    filter(subject_id %in% sid)%>%
+    select(subject_id, charttime, itemid, value, valuenum) %>%
+    collect() 
+```
+
+```{r}
+sid_1.2_final <- left_join(chartevents_1.2, sid_item, by = c("itemid" = "itemid")) |>
+  select(subject_id, charttime, itemid, value, valuenum, label, abbreviation) |>
   print(width = Inf)
 ```
 
 ```{r}
-ggplot(data = sid_adt) + 
-  geom_point(mapping = aes(x = intime, y = careunit)) + 
-  facet_grid(intime ~ careunit)
+ggplot(data = sid_1.2_final) + 
+  geom_point(mapping = aes(x = charttime, y = valuenum, color = abbreviation)) + 
+  facet_grid(abbreviation ~ itemid)
 ```
 
 
@@ -464,51 +474,13 @@ chartevents_tble1 <- arrow::write_dataset(chartevents <- arrow::open_dataset("~/
 icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
   print(width = Inf)
 ```
-method1
 ```{r}
-chartevents_tble2 <- chartevents_tble1 %>%
-# only containing these items for the patients in icustays_tble
-  semi_join(icustays_tble, by = c("subject_id")) %>%
-  # add label in d_items
-  left_join(select(d_items_tble, itemid, label), by = c("itemid")) %>%
+icustays_tble <- icustays_tble %>%
+  arrange(subject_id, intime) %>%
+  distinct(subject_id, .keep_all = TRUE) %>%
   print(width = Inf)
 ```
 
-```{r}
-chartevents_tble3 <- chartevents_tble2 %>%
-   group_by(subject_id, itemid) %>%
-    arrange(charttime, .by_group = TRUE) %>%
-    slice_head(n = 1) %>%
-    ungroup() %>%
-    pivot_wider(names_from = label, values_from = value) %>%
-    # avoid space in column name
-    rename(HR = "Heart Rate", RR = "Respiratory Rate", 
-           Mean_BP = "Non Invasive Blood Pressure systolic",
-           Systolic_BP = "Non Invasive Blood Pressure mean",
-           BT = "Temperature Fahrenheit") %>%
-  print(width = Inf)
-```
-
-method2
-
-```{r}
-# chartevents_tble1 不left join ,Merge filtered_chartevents with icustays_tble
-merged_data_chartevents <- merge(icustays_tble, chartevents_tble1, by = c("subject_id"), all.x = TRUE)
-
-# Group by icustay_id and itemid, then filter for the first measurement within each ICU stay
-chartevents_first <- merged_data_chartevents %>% 
-  group_by(stay_id, itemid) %>% 
-  arrange(charttime) %>% 
-  slice(1)
-
-# Pivot the data to have one row per ICU stay and columns for each vital measurement
-chartevents_tble_final <- chartevents_first %>% 
-  pivot_wider(names_from = itemid, values_from = value)
-# View the final table
-head(chartevents_tble_final)
-```
-
-method3
 ```{r}
 library(dplyr)
 library(arrow)
@@ -526,42 +498,28 @@ chartevents_subset <- chartevents_subset %>%
   slice(1) %>%
   ungroup() %>%
   pivot_wider(names_from = itemid, values_from = value)
-
-# Join with icustays_tble to get one row per ICU stay
-chartevents_tble <- chartevents_subset %>%
-  left_join(icustays_tble, by = c("stay_id" = "stay_id")) %>%
-  select(stay_id, hadm_id, subject_id, 220045, 220179, 220180, 223761, 220210)
-
-# Print the final table
-print(chartevents_tble)
 ```
-method4
+
 ```{r}
-library(dplyr)
-library(arrow)
-
-# Filter for vitals of interest
-vitals <- c(220045, 220179, 220180, 223761, 220210)
-chartevents_subset2 <- chartevents_tble2 %>%
-  filter(itemid %in% vitals) %>%
-  select(stay_id, itemid, value, charttime)
-
-# Get the first vital measurement within each ICU stay
-chartevents_subset2 <- chartevents_subset2 %>%
-  group_by(stay_id, itemid) %>%
-  arrange(charttime) %>%
-  slice(1) %>%
-  ungroup() %>%
-  pivot_wider(names_from = itemid, values_from = value)
-
-# Join with icustays_tble to get one row per ICU stay
 chartevents_tble <- chartevents_subset %>%
-  left_join(icustays_tble, by = c("stay_id" = "stay_id")) %>%
-  select(stay_id, hadm_id, subject_id, 220045, 220179, 220180, 223761, 220210)
-
-# Print the final table
-print(chartevents_tble)
+  left_join(icustays_tble, by = c("stay_id" = "stay_id")) %>% 
+  filter(charttime >= intime, charttime <= outtime) %>%
+  group_by(subject_id) %>%
+  arrange(charttime, .by_group = TRUE) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  select(subject_id, everything()) %>% 
+  select(-c(charttime, intime, outtime, hadm_id, first_careunit, last_careunit, los)) %>%
+  rename(
+    Heart_Rate = `220045`,
+    Systolic_BP = `220179`,
+    Diastolic_BP = `220180`,
+    Respiratory_Rate = `220210`,
+    Temperature = `223761`
+  ) %>%
+  print(width = Inf)
 ```
+  
 ## Q7. Putting things together
 
 Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all ICU stays of adults (age at `intime` >= 18) and columns contain at least following variables
