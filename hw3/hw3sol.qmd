@@ -87,7 +87,7 @@ zcat < ~/mimic/hosp/labevents.csv.gz > labevents.csv
 sid <- 10013310 
 sid_lab <- arrow::write_dataset(labevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet")
   sid_lab <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet") %>%
-    filter(subject_id %in% sid)%>%
+    filter(subject_id %in% sid) %>%
     collect() 
 ```
 
@@ -157,7 +157,7 @@ icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
 
 ```{r}
 chartevents_tble1.2 <- chartevents_tble1 %>%
-  left_join(d_items_tble, by = "itemid") %>%
+  left_join(d_items_tble, by = c("itemid" = "itemid")) %>%
   print(width = Inf)
 ```
 
@@ -171,7 +171,7 @@ sid_1.2_final <- chartevents_tble1.2 %>%
 
 ```{r}
 sid_1.2_final2 <- sid_1.2_final %>%
-  left_join(icustays_tble, by = "stay_id") %>%
+  left_join(icustays_tble, by = c("subject_id" = "subject_id", "hadm_id" = "hadm_id", "stay_id" = "stay_id")) %>%
   filter(intime <= charttime, charttime <= outtime) %>%
   print(width = Inf)
 ```
@@ -293,6 +293,8 @@ From the above graph, 0、16、30、45 minutes appears to be unusual since the f
 
 ```{r}
 admissions_tble %>%
+  mutate(dischtime = as.POSIXct(dischtime),
+         admittime = as.POSIXct(admittime)) %>%
   mutate(length_of_stay = dischtime - admittime) %>%
   ggplot(aes(x = length_of_stay)) +
   geom_histogram() +
@@ -422,14 +424,13 @@ str(chartevents_tble1)
 ```
 
 
-
 ```{r}
 labevents_subset <- labevents_tble1 %>%
   left_join(d_labitems_tble, by = "itemid") %>%
   select(subject_id, hadm_id, itemid, valuenum, storetime, label)
 labevents_subset <- labevents_subset %>%
-  semi_join(icustays_tble, by = "subject_id") %>%
-  left_join(icustays_tble, by = "subject_id") %>%
+  semi_join(icustays_tble, by = c("subject_id" = "subject_id")) %>%
+  left_join(icustays_tble, by = c("subject_id" = "subject_id")) %>%
   select(subject_id, stay_id, itemid, valuenum, storetime, label, intime, outtime) 
 labevents_subset <- labevents_subset %>%
   group_by(stay_id, itemid) %>%
@@ -561,13 +562,12 @@ patients_tble <- read.csv("~/mimic/hosp/patients.csv.gz") |>
 ```
 
 
-
 ```{r}
 mimic_icu_cohort <- chartevents_tble %>%
-  left_join(icustays_tble, by = "subject_id") %>% 
-  left_join(admissions_tble, by = "subject_id") %>%
-  left_join(patients_tble, by = "subject_id") %>%
-  left_join(labevents_tble, by = "subject_id") %>%
+  left_join(icustays_tble, by = c("subject_id" = "subject_id", "stay_id" = "stay_id")) %>% 
+  left_join(admissions_tble, by = c("subject_id" = "subject_id")) %>%
+  left_join(patients_tble, by = c("subject_id" = "subject_id")) %>%
+  left_join(labevents_tble, by = c("subject_id" = "subject_id", "stay_id" = "stay_id")) %>%
   mutate(age = anchor_age + year(intime) - anchor_year) %>%
   filter(age >= 18) %>%
   group_by(subject_id) %>%
