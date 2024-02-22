@@ -146,13 +146,22 @@ chartevents_tble1 <- arrow::write_dataset(chartevents <- arrow::open_dataset("~/
 ```
 
 ```{r}
-sid_1.2_final <- chartevents_tble1 %>%
+d_items_tble <- read_csv("~/mimic/icu/d_items.csv.gz") |>
+  print(width = Inf)
+```
+
+```{r}
+chartevents_tble1.2 <- chartevents_tble1 %>%
+  left_join(d_items_tble, by = "itemid") %>%
+  print(width = Inf)
+```
+
+```{r}
+sid_1.2_final <- chartevents_tble1.2 %>%
   filter(subject_id == sid) %>%
   print(width = Inf)
 
 ```
-
-
 
 ```{r}
 ggplot(data = sid_1.2_final) + 
@@ -408,8 +417,9 @@ labevents_subset <- labevents_subset %>%
   arrange(desc(storetime)) %>%
   slice(1) %>%
   ungroup() %>%
-  pivot_wider(names_from = itemid, values_from = valuenum)
+  pivot_wider(names_from = label, values_from = valuenum)
 ```  
+
 ```{r}
 labevents_tble <- labevents_subset %>%
   filter(storetime >= intime, storetime <= outtime) %>%
@@ -418,17 +428,7 @@ labevents_tble <- labevents_subset %>%
   slice_head(n = 1) %>%
   ungroup() %>%
   select(subject_id, everything()) %>% 
-  select(-c(storetime, intime, outtime, label)) %>%
-  rename(
-    creatinine = '50912',
-    potassium = '50971',
-    sodium = '50983',
-    chloride = '50902',
-    bicarbonate = '50882',
-    hematocrit = '51221',
-    white_blood_cell_count = '51301',
-    glucose = '50931'
-  ) %>%
+  select(-c(storetime, intime, outtime)) %>%
   print(width = Inf)
 ```
 
@@ -466,16 +466,12 @@ chartevents_tble1 <- arrow::write_dataset(chartevents <- arrow::open_dataset("~/
     collect() 
 ```
 
+
 ```{r}
 icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
   print(width = Inf)
 ```
-```{r}
-icustays_tble <- icustays_tble %>%
-  arrange(subject_id, intime) %>%
-  distinct(subject_id, .keep_all = TRUE) %>%
-  print(width = Inf)
-```
+
 
 ```{r}
 library(dplyr)
