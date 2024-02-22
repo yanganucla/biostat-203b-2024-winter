@@ -137,32 +137,33 @@ Do a similar visualization for the patient `10013310`.
 
 
 ```{r}
-sid_item <- read_csv("~/mimic/icu/d_items.csv.gz") |>
-  print(width = Inf)
-```
-
-```{r}
 #| eval: false
-sid <- 10013310 
-chartevents_1.2 <- arrow::write_dataset(chartevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw3/chartevents_1.2", format = "parquet")
+chartevents_tble1 <- arrow::write_dataset(chartevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw3/chartevents_pq", format = "parquet")
 
-  chartevents_1.2 <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents_1.2", format = "parquet") %>%
-    filter(subject_id %in% sid)%>%
-    select(subject_id, charttime, itemid, value, valuenum) %>%
+  chartevents_tble1 <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents_pq", format = "parquet") %>%
+    filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) %>%
     collect() 
 ```
 
 ```{r}
-sid_1.2_final <- left_join(chartevents_1.2, sid_item, by = c("itemid" = "itemid")) |>
-  select(subject_id, charttime, itemid, value, valuenum, label, abbreviation) |>
+sid_1.2_final <- chartevents_tble1 %>%
+  filter(subject_id == sid) %>%
   print(width = Inf)
+
 ```
+
+
 
 ```{r}
 ggplot(data = sid_1.2_final) + 
-  geom_point(mapping = aes(x = charttime, y = valuenum, color = abbreviation)) + 
-  facet_grid(abbreviation ~ itemid)
+  geom_point(mapping = aes(x = charttime, y = valuenum, color = label)) + geom_line(mapping = aes(x = charttime, y = valuenum, color = label)) +
+  facet_grid(label ~ stay_id, scales = "free_y") +
+  labs(x = "Calendar Time", y = "Value of Vital", title = "Vitals of Patient 10013310 During ICU Stays")
 ```
+```{r}
+ggsave("10013310_icu.png")
+```
+![](10013310_icu.png)
 
 
 
