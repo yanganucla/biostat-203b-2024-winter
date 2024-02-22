@@ -544,24 +544,7 @@ patients_tble <- read.csv("~/mimic/hosp/patients.csv.gz") |>
   print(width = Inf)
 ```
 
-```{r}
-# Print column names of chartevents_tble
-print(colnames(chartevents_tble))
 
-# Print column names of icustays_tble
-print(colnames(icustays_tble))
-
-# Print column names of admissions_tble
-print(colnames(admissions_tble))
-
-# Print column names of patients_tble
-print(colnames(patients_tble))
-
-# Print column names of labevents_tble
-print(colnames(labevents_tble))
-
-
-```
 
 ```{r}
 mimic_icu_cohort <- chartevents_tble %>%
@@ -577,8 +560,8 @@ mimic_icu_cohort <- chartevents_tble %>%
   select(subject_id, everything()) %>%
   print(width = Inf)
 
-
 ```
+
 
 ## Q8. Exploratory data analysis (EDA)
 
@@ -591,4 +574,70 @@ Summarize the following information about the ICU stay cohort `mimic_icu_cohort`
 - Length of ICU stay `los` vs the average vital measurements within the first hour of ICU stay
 
 - Length of ICU stay `los` vs first ICU unit
+**Answer**
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Load the mimic_icu_cohort dataset
+# Replace "mimic_icu_cohort" with the actual name of your dataset
+data <- mimic_icu_cohort
+
+# Length of ICU stay vs demographic variables
+demographic_vars <- c("race", "insurance", "marital_status", "gender", "anchor_age")
+for (var in demographic_vars) {
+  summary_stats <- data %>% 
+    group_by({{ var }}) %>% 
+    summarize(mean_los = mean(los), median_los = median(los))
+  print(paste("Summary statistics for", var))
+  print(summary_stats)
+  
+  # Visualize with boxplot or violin plot
+  print(ggplot(data, aes_string(x = var, y = "los")) +
+    geom_boxplot() +
+    labs(x = var, y = "Length of ICU Stay (LOS)") +
+    ggtitle(paste("Length of ICU Stay vs", var)) +
+    theme_minimal())
+}
+```
+
+```{r}
+# Length of ICU stay vs last available lab measurements
+lab_vars <- c("creatinine", "potassium", "sodium", "chloride", "bicarbonate", "hematocrit", "white_blood_cell_count", "glucose")
+for (var in lab_vars) {
+  print(ggplot(data, aes_string(x = var, y = "los")) +
+    geom_point() +
+    labs(x = var, y = "Length of ICU Stay (LOS)") +
+    ggtitle(paste("Length of ICU Stay vs", var)) +
+    theme_minimal())
+}
+
+
+```
+
+```{r}
+# Length of ICU stay vs average vital measurements within the first hour
+vital_vars <- c("Heart_Rate", "Systolic_BP", "Diastolic_BP", "Respiratory_Rate", "Temperature")
+for (var in vital_vars) {
+  print(ggplot(data, aes_string(x = var, y = "los")) +
+    geom_point() +
+    labs(x = var, y = "Length of ICU Stay (LOS)") +
+    ggtitle(paste("Length of ICU Stay vs", var)) +
+    theme_minimal())
+}
+
+```
+
+```{r}
+# Length of ICU stay vs first ICU unit
+ggplot(data, aes(x = first_careunit, y = los)) +
+  geom_boxplot() +
+  labs(x = "First ICU Unit", y = "Length of ICU Stay (LOS)") +
+  ggtitle("Length of ICU Stay vs First ICU Unit") +
+  theme_minimal()
+
+```
+
+
 
