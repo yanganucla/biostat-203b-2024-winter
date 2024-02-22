@@ -529,6 +529,56 @@ Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all 
 The final `mimic_icu_cohort` should have one row per ICU stay and columns for each variable.
 
 ![](mimic_icu_cohort.png)
+```{r}
+icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
+  print(width = Inf)
+```
+
+```{r}
+admissions_tble <- read.csv("~/mimic/hosp/admissions.csv.gz") |>
+  print(width = Inf)
+```
+
+```{r}
+patients_tble <- read.csv("~/mimic/hosp/patients.csv.gz") |>
+  print(width = Inf)
+```
+
+```{r}
+# Print column names of chartevents_tble
+print(colnames(chartevents_tble))
+
+# Print column names of icustays_tble
+print(colnames(icustays_tble))
+
+# Print column names of admissions_tble
+print(colnames(admissions_tble))
+
+# Print column names of patients_tble
+print(colnames(patients_tble))
+
+# Print column names of labevents_tble
+print(colnames(labevents_tble))
+
+
+```
+
+```{r}
+mimic_icu_cohort <- chartevents_tble %>%
+  left_join(icustays_tble, by = "subject_id") %>% 
+  left_join(admissions_tble, by = "subject_id") %>%
+  left_join(patients_tble, by = "subject_id") %>%
+  left_join(labevents_tble, by = "subject_id") %>%
+  filter(intime >= 18) %>%
+  group_by(subject_id) %>%
+  arrange(subject_id, .by_group = TRUE) %>%
+  slice_head(n = 1) %>%
+  ungroup() %>%
+  select(subject_id, everything()) %>%
+  print(width = Inf)
+
+
+```
 
 ## Q8. Exploratory data analysis (EDA)
 
