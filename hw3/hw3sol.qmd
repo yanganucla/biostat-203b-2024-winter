@@ -151,12 +151,18 @@ d_items_tble <- read_csv("~/mimic/icu/d_items.csv.gz") |>
 ```
 
 ```{r}
+icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
+  print(width = Inf)
+```
+
+```{r}
 chartevents_tble1.2 <- chartevents_tble1 %>%
   left_join(d_items_tble, by = "itemid") %>%
   print(width = Inf)
 ```
 
 ```{r}
+sid <- 10013310 
 sid_1.2_final <- chartevents_tble1.2 %>%
   filter(subject_id == sid) %>%
   print(width = Inf)
@@ -164,9 +170,17 @@ sid_1.2_final <- chartevents_tble1.2 %>%
 ```
 
 ```{r}
-ggplot(data = sid_1.2_final) + 
-  geom_point(mapping = aes(x = charttime, y = valuenum, color = label)) + geom_line(mapping = aes(x = charttime, y = valuenum, color = label)) +
-  facet_grid(label ~ stay_id, scales = "free_y") +
+sid_1.2_final2 <- sid_1.2_final %>%
+  left_join(icustays_tble, by = "stay_id") %>%
+  filter(intime <= charttime, charttime <= outtime) %>%
+  print(width = Inf)
+```
+
+
+```{r}
+ggplot(data = sid_1.2_final2) + 
+  geom_point(mapping = aes(x = charttime, y = valuenum, color = abbreviation)) + geom_line(mapping = aes(x = charttime, y = valuenum, color = abbreviation)) +
+  facet_grid(abbreviation ~ stay_id, scales = "free_y") +
   labs(x = "Calendar Time", y = "Value of Vital", title = "Vitals of Patient 10013310 During ICU Stays")
 ```
 ```{r}
@@ -403,6 +417,11 @@ icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
   print(width = Inf)
 ```
 
+```{r}
+str(chartevents_tble1)
+```
+
+
 
 ```{r}
 labevents_subset <- labevents_tble1 %>%
@@ -481,7 +500,7 @@ library(arrow)
 vitals <- c(220045, 220179, 220180, 223761, 220210)
 chartevents_subset <- chartevents_tble1 %>%
   filter(itemid %in% vitals) %>%
-  select(stay_id, itemid, value, charttime)
+  select(stay_id, itemid, valuenum, charttime)
 
 # Get the first vital measurement within each ICU stay
 chartevents_subset <- chartevents_subset %>%
@@ -489,7 +508,7 @@ chartevents_subset <- chartevents_subset %>%
   arrange(charttime) %>%
   slice(1) %>%
   ungroup() %>%
-  pivot_wider(names_from = itemid, values_from = value)
+  pivot_wider(names_from = itemid, values_from = valuenum)
 ```
 
 ```{r}
@@ -549,7 +568,8 @@ mimic_icu_cohort <- chartevents_tble %>%
   left_join(admissions_tble, by = "subject_id") %>%
   left_join(patients_tble, by = "subject_id") %>%
   left_join(labevents_tble, by = "subject_id") %>%
-  filter(intime >= 18) %>%
+  mutate(age = anchor_age + year(intime) - anchor_year) %>%
+  filter(age >= 18) %>%
   group_by(subject_id) %>%
   arrange(subject_id, .by_group = TRUE) %>%
   slice_head(n = 1) %>%
