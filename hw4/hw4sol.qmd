@@ -77,7 +77,9 @@ icustays_tble <- tbl(con_bq, "icustays") |>
 Connect to the `admissions` table.
 ```{r}
 # # TODO
-# admissions_tble <- 
+ admissions_tble <- tbl(con_bq, "admissions") |>
+#   # show_query() |>
+    print(width = Inf)
 ```
 
 ### Q1.4 `patients` data
