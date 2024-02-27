@@ -62,9 +62,10 @@ List all tables in the `mimic4_v2_2` database.
 ```{r}
 dbListTables(con_bq)
 ```
+ 
 ### Q1.2 `icustays` data
-
 Connect to the `icustays` table.
+
 ```{r}
 # full ICU stays table
 icustays_tble <- tbl(con_bq, "icustays") |>
@@ -97,8 +98,26 @@ Connect to the `patients` table.
 Connect to the `labevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the lab items listed in HW3. Only keep the last lab measurements before the ICU stay and pivot lab items to become variables/columns. Write all steps in _one_ chain of pipes.
 ```{r}
 # # TODO
-# labevents_tble <- 
+labevents_tble <- tbl(con_bq, "labevents") |>
+#   # show_query() |>
+    print(width = Inf)
+icustays_tble <- tbl(con_bq, "icustays") |> print(width = Inf)
+d_labitems_tble <- tbl(con_bq, "d_labitems") |> print(width = Inf)
+labevents_tble <- labevents_tble |>
+  filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) |>
+  inner_join(icustays_tble, by = "subject_id") |>
+  inner_join(d_labitems_tble, by = "itemid") |>
+  select(subject_id, stay_id, itemid, valuenum, storetime, label, intime, outtime) |>
+  filter(storetime >= intime, storetime <= outtime) |>
+  group_by(subject_id, stay_id, itemid) |>
+  slice_max(storetime) |>
+  ungroup() |>
+  pivot_wider(names_from = label, values_from = valuenum) |>
+  show_query() |>
+  print(width = Inf)
 ```
+
+
 
 ### Q1.6 `chartevents` data
 
