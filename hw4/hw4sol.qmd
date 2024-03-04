@@ -216,6 +216,49 @@ Hint: Below is a numerical summary of my tibble after preprocessing:
 
 </iframe>
 
+```{r}
+library(dplyr)
+library(forcats)
+library(gtsummary)
+
+# Lump infrequent levels into "Other" for specified variables
+mimic_icu_cohort <- mimic_icu_cohort %>%
+  mutate(
+    first_careunit = fct_lump(first_careunit, n = 10, other_level = "Other"),
+    last_careunit = fct_lump(last_careunit, n = 10, other_level = "Other"),
+    admission_type = fct_lump(admission_type, n = 10, other_level = "Other"),
+    admission_location = fct_lump(admission_location, n = 10, other_level = "Other"),
+    discharge_location = fct_lump(discharge_location, n = 10, other_level = "Other")
+  )
+
+# Collapse levels of race into specified categories
+mimic_icu_cohort <- mimic_icu_cohort %>%
+  mutate(
+    race = fct_collapse(
+      race,
+      ASIAN = "ASIAN",
+      BLACK = c("BLACK"),
+      HISPANIC = c("HISPANIC"),
+      WHITE = "WHITE",
+      Other = c()
+    )
+  )
+
+# Create new variable los_long
+mimic_icu_cohort <- mimic_icu_cohort %>%
+  mutate(los_long = los >= 2)
+
+# Summarize the data using tbl_summary(), stratified by los_long
+summary_table <- mimic_icu_cohort %>%
+  select(-subject_id, -stay_id) %>%
+  tbl_summary(by = los_long, missing = "no")
+
+# Print summary table
+summary_table
+```
+
+
+    
 ### Q1.9 Save the final tibble
 
 Save the final tibble to an R data file `mimic_icu_cohort.rds` in the `mimiciv_shiny` folder.
