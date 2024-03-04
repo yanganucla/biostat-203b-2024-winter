@@ -18,6 +18,7 @@ execute:
 Display machine information:
 
 ```{r}
+rm(list = ls())
 sessionInfo()
 ```
 
@@ -147,14 +148,44 @@ print(labevents_tble, width = Inf)
 ### Q1.6 `chartevents` data
 
 Connect to `chartevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the chart events listed in HW3. Only keep the first chart events during ICU stay and pivot chart events to become variables/columns. Write all steps in *one* chain of pipes.
+```{r}
+# # TODO
+d_items_tble <- tbl(con_bq, "d_items") |> 
+  filter(itemid %in% c(
+    220045, # HR
+    220179, # NBPS
+    220180, # NPBd
+    220210, # RR
+    223761 # Temp F
+  )) |>
+  print(width = Inf)
+```
 
 ```{r}
 # # TODO
-chartevents_tble <- tbl(con_bq, "chartevents") |>
-#   # show_query() |>
-    print(width = Inf)
 icustays_tble <- tbl(con_bq, "icustays") |> print(width = Inf)
-d_items_tble <- tbl(con_bq, "d_items") |> print(width = Inf)
+```
+
+```{r}
+chartevents_tble <- tbl(con_bq, "chartevents") |>
+  select(subject_id, stay_id, itemid, charttime, valuenum) |>
+  semi_join(icustays_tble, by = "subject_id") |>
+  semi_join(d_items_tble, by = "itemid") |>
+  left_join(select(icustays_tble, stay_id, intime, outtime), by = c("stay_id")) |>
+  filter(charttime >= intime, charttime <= outtime) |>
+  group_by(subject_id, stay_id, itemid) |>
+  slice_min(charttime, n = 1) |>
+  select(-charttime, -intime, -outtime) |>
+  ungroup() |>
+  pivot_wider(names_from = itemid, values_from = valuenum) |>
+  rename_at(
+    .vars = vars(as.character(pull(d_items_tble, itemid))),
+    .funs = ~str_to_lower(pull(d_items_tble, label))
+  ) |>
+  arrange(subject_id, stay_id)
+
+print(chartevents_tble, width = Inf)
+
 ```
 
 ### Q1.7 Put things together
@@ -163,7 +194,7 @@ This step is similar to Q7 of HW3. Using *one* chain of pipes `|>` to perform fo
 
 ```{r}
 # # TODO
-# mimic_icu_cohort <- 
+
 ```
 
 ### Q1.8 Preprocessing
