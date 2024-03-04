@@ -194,6 +194,15 @@ This step is similar to Q7 of HW3. Using *one* chain of pipes `|>` to perform fo
 
 ```{r}
 # # TODO
+ mimic_icu_cohort <- icustays_tble |>
+  left_join(admissions_tble, by = "subject_id", "hadm_id") |>
+  left_join(patients_tble, by = "subject_id") |>
+  mutate(age = anchor_age + year(intime) - anchor_year) %>%
+   filter(age >= 18) |>
+   left_join(labevents_tble, by = c("subject_id", "stay_id")) |>
+   left_join(chartevents_tble, by = c("subject_id", "stay_id")) |>
+   collect() |>
+  print(width = Inf)
 
 ```
 
