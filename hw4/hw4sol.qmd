@@ -257,7 +257,6 @@ summary_table <- mimic_icu_cohort %>%
 summary_table
 ```
 
-
     
 ### Q1.9 Save the final tibble
 
