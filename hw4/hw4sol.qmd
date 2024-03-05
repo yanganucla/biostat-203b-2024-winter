@@ -163,7 +163,9 @@ d_items_tble <- tbl(con_bq, "d_items") |>
 
 ```{r}
 # # TODO
-icustays_tble <- tbl(con_bq, "icustays") |> print(width = Inf)
+icustays_tble <- tbl(con_bq, "icustays") |>
+  arrange(subject_id, hadm_id) |>
+  print(width = Inf)
 ```
 
 ```{r}
@@ -195,12 +197,13 @@ This step is similar to Q7 of HW3. Using *one* chain of pipes `|>` to perform fo
 ```{r}
 # # TODO
  mimic_icu_cohort <- icustays_tble |>
-  left_join(admissions_tble, by = "subject_id", "hadm_id") |>
-  left_join(patients_tble, by = "subject_id") |>
+  left_join(admissions_tble, by = c("subject_id", "hadm_id")) |>
+  left_join(patients_tble, by = c("subject_id")) |>
   mutate(age = anchor_age + year(intime) - anchor_year) %>%
    filter(age >= 18) |>
    left_join(labevents_tble, by = c("subject_id", "stay_id")) |>
    left_join(chartevents_tble, by = c("subject_id", "stay_id")) |>
+   arrange(subject_id, stay_id) |>
    collect() |>
   print(width = Inf)
 
@@ -215,6 +218,12 @@ Hint: Below is a numerical summary of my tibble after preprocessing:
 <iframe width="95%" height="500" src="./mimic_icu_cohort_gtsummary.html">
 
 </iframe>
+
+```{r}
+race_table <- table(mimic_icu_cohort$race)
+print(race_table)
+```
+
 
 ```{r}
 library(dplyr)
@@ -236,11 +245,11 @@ mimic_icu_cohort <- mimic_icu_cohort %>%
   mutate(
     race = fct_collapse(
       race,
-      ASIAN = "ASIAN",
-      BLACK = c("BLACK"),
-      HISPANIC = c("HISPANIC"),
-      WHITE = "WHITE",
-      Other = c()
+      ASIAN = c("ASIAN", "ASIAN - ASIAN INDIAN", "ASIAN - CHINESE", "ASIAN - KOREAN", "ASIAN - SOUTH EAST ASIAN"),
+      BLACK = c("BLACK/AFRICAN", "BLACK/AFRICAN AMERICAN", "BLACK/CAPE VERDEAN", "BLACK/CARIBBEAN ISLAND"),
+      HISPANIC = c("HISPANIC OR LATINO", "HISPANIC/LATINO - CENTRAL AMERICAN", "HISPANIC/LATINO - COLUMBIAN", "HISPANIC/LATINO - CUBAN", "HISPANIC/LATINO - DOMINICAN", "HISPANIC/LATINO - GUATEMALAN", "HISPANIC/LATINO - HONDURAN", "HISPANIC/LATINO - MEXICAN", "HISPANIC/LATINO - PUERTO RICAN", "HISPANIC/LATINO - SALVADORAN"),
+      WHITE = c("WHITE", "WHITE - BRAZILIAN", "WHITE - EASTERN EUROPEAN", "WHITE - RUSSIAN", "WHITE - OTHER EUROPEAN"),
+      Other = c("AMERICAN INDIAN/ALASKA NATIVE", "MULTIPLE RACE/ETHNICITY", "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER", "PORTUGUESE","SOUTH AMERICAN","UNKNOWN")
     )
   )
 
@@ -250,7 +259,7 @@ mimic_icu_cohort <- mimic_icu_cohort %>%
 
 # Summarize the data using tbl_summary(), stratified by los_long
 summary_table <- mimic_icu_cohort %>%
-  select(-subject_id, -stay_id) %>%
+  select(-subject_id, -stay_id, -hadm_id, -admit_provider_id) %>%
   tbl_summary(by = los_long, missing = "no")
 
 # Print summary table
@@ -280,9 +289,206 @@ if (exists("con_bq")) {
 }
 rm(list = ls())
 ```
-
+```{r}
+unknown_levels <- levels(mimic_icu_cohort$race)[!levels(mimic_icu_cohort$race) %in% c("ASIAN", "BLACK", "HISPANIC", "WHITE", "Other")]
+print(unknown_levels)
+```
 Although it is not a good practice to add big data files to git, for grading purpose, please add `mimic_icu_cohort.rds` to your git repository.
 
 ## Q2. Shiny app
 
 Develop a Shiny app for exploring the ICU cohort data created in Q1. The app should reside in the `mimiciv_shiny` folder. The app should contains at least two tabs. One tab provides easy access to the graphical and numerical summaries of variables (demographics, lab measurements, vitals) in the ICU cohort. The other allows user to choose a specific patient in the cohort and display the patient's ADT and ICU stay information as we did in Q1 of HW3.
+
+```{r}
+library(shiny)
+
+# Define UI for dataset viewer app ----
+ui <- fluidPage(
+  
+  # App title ----
+  titlePanel("Title"),
+  
+  # Sidebar layout with input and output definitions ----
+  
+  fluidRow(
+    
+    column(4,
+           
+           
+           
+           # Input: Text for providing a caption ----
+           # Note: Changes made to the caption in the textInput control
+           # are updated in the output area immediately as you type
+           textInput(inputId = "caption",
+                     label = "Caption:",
+                     value = "Data Summary"),
+           
+           # Input: Selector for choosing dataset ----
+           selectInput(inputId = "dataset",
+                       label = "Choose a dataset:",
+                       choices = c("rock", "pressure", "cars")),
+           
+           # Input: Numeric entry for number of obs to view ----
+           numericInput(inputId = "obs",
+                        label = "Number of observations to view:",
+                        value = 10)
+           
+           
+           
+    ),
+    
+    column(8,
+           tabsetPanel(
+             tabPanel("Summary",
+                      h5('subtitle1'),
+                      verbatimTextOutput("summary")
+             ),
+             
+             tabPanel("Table",
+                      h5('subtitle2'),
+                      tableOutput("view")
+             )
+           ),
+           
+           mainPanel(
+             
+           )
+    )
+  )
+)
+
+# Define server logic to summarize and view selected dataset ----
+server <- function(input, output) {
+  
+  # Return the requested dataset ----
+  # By declaring datasetInput as a reactive expression we ensure
+  # that:
+  #
+  # 1. It is only called when the inputs it depends on changes
+  # 2. The computation and result are shared by all the callers,
+  #    i.e. it only executes a single time
+  datasetInput <- reactive({
+    switch(input$mimic_icu_cohort,
+           "rock" = demographics,
+           "pressure" = lab_measurements,
+           "cars" = vitals)
+  })
+  
+  # Create caption ----
+  # The output$caption is computed based on a reactive expression
+  # that returns input$caption. When the user changes the
+  # "caption" field:
+  #
+  # 1. This function is automatically called to recompute the output
+  # 2. New caption is pushed back to the browser for re-display
+  #
+  # Note that because the data-oriented reactive expressions
+  # below don't depend on input$caption, those expressions are
+  # NOT called when input$caption changes
+  output$caption <- renderText({
+    input$caption
+  })
+  
+  # Generate a summary of the dataset ----
+  # The output$summary depends on the datasetInput reactive
+  # expression, so will be re-executed whenever datasetInput is
+  # invalidated, i.e. whenever the input$dataset changes
+  output$summary <- renderPrint({
+    dataset <- datasetInput()
+    summary(dataset)
+  })
+  
+  # Show the first "n" observations ----
+  # The output$view depends on both the databaseInput reactive
+  # expression and input$obs, so it will be re-executed whenever
+  # input$dataset or input$obs is changed
+  output$view <- renderTable({
+    head(datasetInput(), n = input$obs)
+  })
+  
+}
+
+# Create Shiny app ----
+shinyApp(ui, server)
+
+```
+```{r}
+cohort <- readRDS("mimiciv_shiny/mimic_icu_cohort.rds")
+head(cohort)
+```
+
+```{r}
+library(shiny)
+library(dplyr)
+library(gtsummary)
+
+
+
+# Define UI for the application
+ui <- fluidPage(
+  titlePanel("MIMIC-IV ICU Cohort Exploration"),
+  
+  # Define the sidebar layout
+  sidebarLayout(
+    sidebarPanel(
+      # Add tabs for different sections
+      tabsetPanel(
+        tabPanel("Summary", 
+                 h3("Graphical and Numerical Summaries"),
+                 # Add UI elements for summaries
+                 # For example, add checkboxes or dropdowns for selecting variables
+        ),
+        tabPanel("Patient Details",
+                 h3("Patient Information"),
+                 # Add UI elements for selecting a specific patient
+                 # For example, add a dropdown for selecting patient ID
+        )
+      )
+    ),
+    
+    # Define the main panel
+    mainPanel(
+      # Display the summaries or patient details based on tab selection
+      uiOutput("output_tab")
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output) {
+  
+  # Render the appropriate tab based on user selection
+  output$output_tab <- renderUI({
+    switch(input$tab_selected,
+           "Summary" = ui_output_summary(),
+           "Patient Details" = ui_output_patient_details()
+    )
+  })
+  
+  # Define UI for the Summary tab
+  ui_output_summary <- function() {
+    fluidRow(
+      column(12, 
+             h4("Graphical and Numerical Summaries"),
+             # Add UI elements for displaying summaries
+             # For example, add plotOutput or tableOutput
+      )
+    )
+  }
+  
+  # Define UI for the Patient Details tab
+  ui_output_patient_details <- function() {
+    fluidRow(
+      column(12, 
+             h4("Patient Information"),
+             # Add UI elements for displaying patient details
+             # For example, add textOutput or dataTableOutput
+      )
+    )
+  }
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+```
+
