@@ -260,9 +260,12 @@ mimic_icu_cohort <- mimic_icu_cohort %>%
       HISPANIC = c("HISPANIC OR LATINO", "HISPANIC/LATINO - CENTRAL 
                    AMERICAN", "HISPANIC/LATINO - COLUMBIAN", 
                    "HISPANIC/LATINO - CUBAN",
-                   "HISPANIC/LATINO - DOMINICAN", "HISPANIC/LATINO - GUATEMALAN", 
-                   "HISPANIC/LATINO - HONDURAN", "HISPANIC/LATINO - MEXICAN", 
-                   "HISPANIC/LATINO - PUERTO RICAN", "HISPANIC/LATINO - SALVADORAN"),
+                   "HISPANIC/LATINO - DOMINICAN", "HISPANIC/LATINO - 
+                   GUATEMALAN", 
+                   "HISPANIC/LATINO - HONDURAN", "HISPANIC/LATINO - 
+                   MEXICAN", 
+                   "HISPANIC/LATINO - PUERTO RICAN", "HISPANIC/LATINO - 
+                   SALVADORAN"),
       WHITE = c("WHITE", "WHITE - BRAZILIAN", "WHITE - EASTERN EUROPEAN", 
                 "WHITE - RUSSIAN", "WHITE - OTHER EUROPEAN"),
       Other = c("OTHER", "UNABLE TO OBTAIN", "PATIENT DECLINED TO ANSWER", 
