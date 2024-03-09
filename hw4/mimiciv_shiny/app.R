@@ -69,7 +69,8 @@ ui <- fluidPage(
                  checkboxInput("remove", "Remove outliers in IQR method for measurements?")
                ),
                mainPanel(
-                 plotOutput("cohort_plot")
+                 plotOutput("cohort_plot"),
+                 verbatimTextOutput("summary_output")
                )
              )),
     tabPanel("patient's ADT and ICU stay information", fluid = TRUE,
@@ -135,82 +136,99 @@ server <- function(input, output) {
     }
   })
   
+  # Generate numerical summary
+  output$summary_output <- renderPrint({
+    variable <- input$variable
+    
+    if(variable %in% c("labevents", "chartevents")) {
+      if(variable == "labevents") {
+        summary_data <- summary(mimic_icu_cohort %>% 
+                                  select(potassium, sodium, glucose, creatinine, bicarbonate, chloride))
+      } else {
+        summary_data <- summary(mimic_icu_cohort %>% 
+                                  select(`respiratory rate`, `heart rate`, 
+                                         `non invasive blood pressure systolic`, 
+                                         `non invasive blood pressure diastolic`, 
+                                         `temperature fahrenheit`))
+      }
+    } else {
+      summary_data <- summary(mimic_icu_cohort %>% select(variable))
+    }
+    
+    summary_data
+  })
   
   # second tab
-
-  
   reactiveData <- reactive({
     req(input$patientID)
     sid <- as.numeric(input$patientID)
     
-  h3_list <- list(
-    sid = sid,
-    sid_adt = sid_adt %>%
-      filter(subject_id == sid) %>%
-      collect(),
-    sid_lab = sid_lab %>%
-      filter(subject_id == sid) %>%
-      collect(),
-    sid_proc = sid_proc %>%
-      filter(subject_id == sid) %>%
-      collect(),
-    sid_diag = sid_diag %>%
-      filter(subject_id == sid) %>%
-      collect()
-  )
-  
-  return(h3_list)
-  })
-
-
-    # Plotting
-    output$adt_icu <- renderPlot({
-      data_list <- reactiveData()
-      req(data_list)
-      sid <- data_list$sid
-      sid_adt <- data_list$sid_adt
-      sid_lab <- data_list$sid_lab
-      sid_proc <- data_list$sid_proc
-      sid_diag <- data_list$sid_diag
+    h3_list <- list(
+      sid = sid,
+      sid_adt = sid_adt %>%
+        filter(subject_id == sid) %>%
+        collect(),
+      sid_lab = sid_lab %>%
+        filter(subject_id == sid) %>%
+        collect(),
+      sid_proc = sid_proc %>%
+        filter(subject_id == sid) %>%
+        collect(),
+      sid_diag = sid_diag %>%
+        filter(subject_id == sid) %>%
+        collect()
+    )
     
-      
-      ggplot() +
-        geom_segment(
-          data = sid_adt %>%
-            filter(eventtype != "discharge"), 
-          aes(x = intime, xend = outtime, y = "ADT", yend = "ADT", 
-              color = careunit, linewidth = str_detect(careunit, "(ICU|CCU)"))
-        ) +
-        geom_point(data = sid_lab %>% distinct(charttime, .keep_all = TRUE), 
-                   aes(x = charttime, y = "Lab"), shape = '+', size = 5) +
-        geom_jitter(data = sid_proc, aes(x = chartdate + hours(12), 
-                                         y = "Procedure", shape = 
-                                           str_sub(long_title, 1, 25)), 
-                    size = 3, height = 0) +
-        labs(
-          title = paste(
-            "Patient", sid , ",",
-            mimic_icu_cohort$gender, ",",
-            mimic_icu_cohort$anchor_age + year(mimic_icu_cohort$admittime[1]) 
-            - mimic_icu_cohort$anchor_year, 
-            "years old,",
-            str_to_lower(mimic_icu_cohort$race[1])
-          ),
-          subtitle = paste(str_to_lower(sid_diag$long_title[1:3]), 
-                           collapse = "\n"),
-          x = "Calendar Time",
-          y = "",
-          color = "Care Unit",
-          shape = "Procedure"
-        ) +
-        guides(linewidth = "none") +
-        scale_y_discrete(limits = rev) +
-        theme_light() +
-        theme(legend.position = "bottom", legend.box = "vertical")
-    })
+    return(h3_list)
+  })
+  
+  
+  # Plotting
+  output$adt_icu <- renderPlot({
+    h3_list <- reactiveData()
+    req(h3_list)
+    sid <- h3_list$sid
+    sid_adt <- h3_list$sid_adt
+    sid_lab <- h3_list$sid_lab
+    sid_proc <- h3_list$sid_proc
+    sid_diag <- h3_list$sid_diag
+    
+    ggplot() +
+      geom_segment(
+        data = sid_adt %>%
+          filter(eventtype != "discharge"), 
+        aes(x = intime, xend = outtime, y = "ADT", yend = "ADT", 
+            color = careunit, linewidth = str_detect(careunit, "(ICU|CCU)"))
+      ) +
+      geom_point(data = sid_lab %>% distinct(charttime, .keep_all = TRUE), 
+                 aes(x = charttime, y = "Lab"), shape = '+', size = 5) +
+      geom_jitter(data = sid_proc, aes(x = chartdate + hours(12), 
+                                       y = "Procedure", shape = 
+                                         str_sub(long_title, 1, 25)), 
+                  size = 3, height = 0) +
+      labs(
+        title = paste(
+          "Patient", sid , ",",
+          mimic_icu_cohort$gender, ",",
+          mimic_icu_cohort$anchor_age + year(mimic_icu_cohort$admittime[1]) 
+          - mimic_icu_cohort$anchor_year, 
+          "years old,",
+          str_to_lower(mimic_icu_cohort$race[1])
+        ),
+        subtitle = paste(str_to_lower(sid_diag$long_title[1:3]), 
+                         collapse = "\n"),
+        x = "Calendar Time",
+        y = "",
+        color = "Care Unit",
+        shape = "Procedure"
+      ) +
+      guides(linewidth = "none") +
+      scale_y_discrete(limits = rev) +
+      theme_light() +
+      theme(legend.position = "bottom", legend.box = "vertical")
+  })
 }
-
-
 
 # Create Shiny app ----
 shinyApp(ui, server)
+
