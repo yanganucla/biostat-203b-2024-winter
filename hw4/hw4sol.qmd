@@ -113,7 +113,8 @@ Connect to the `labevents` table and retrieve a subset that only contain subject
 ```{r}
 # # TODO
 d_labitems_tble <- tbl(con_bq, "d_labitems") |> 
-  filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) |>
+  filter(itemid %in% c(50912, 50971, 50983, 50902, 
+                       50882, 51221, 51301, 50931)) |>
   print(width = Inf)
 ```
 
@@ -127,7 +128,8 @@ labevents_tble <- tbl(con_bq, "labevents") |>
   select(subject_id, itemid, valuenum, storetime) |>
   semi_join(icustays_tble, by = "subject_id") |>
   semi_join(d_labitems_tble, by = "itemid") |>
-  left_join(select(icustays_tble, subject_id, stay_id, intime), by = c("subject_id" = "subject_id")) |>
+  left_join(select(icustays_tble, subject_id, stay_id, intime),
+            by = c("subject_id" = "subject_id")) |>
   filter(storetime < intime) |>
   group_by(subject_id, stay_id, itemid) |>
   slice_max(storetime, n = 1) |>
@@ -173,7 +175,8 @@ chartevents_tble <- tbl(con_bq, "chartevents") |>
   select(subject_id, stay_id, itemid, charttime, valuenum) |>
   semi_join(icustays_tble, by = "subject_id") |>
   semi_join(d_items_tble, by = "itemid") |>
-  left_join(select(icustays_tble, stay_id, intime, outtime), by = c("stay_id")) |>
+  left_join(select(icustays_tble, stay_id, intime, outtime), 
+            by = c("stay_id")) |>
   filter(charttime >= intime, charttime <= outtime) |>
   group_by(subject_id, stay_id, itemid) |>
   slice_min(charttime, n = 1) |>
@@ -233,11 +236,16 @@ library(gtsummary)
 # Lump infrequent levels into "Other" for specified variables
 mimic_icu_cohort <- mimic_icu_cohort %>%
   mutate(
-    first_careunit = fct_lump(first_careunit, n = 4, other_level = "Other"),
-    last_careunit = fct_lump(last_careunit, n = 4, other_level = "Other"),
-    admission_type = fct_lump(admission_type, n = 4, other_level = "Other"),
-    admission_location = fct_lump(admission_location, n = 3, other_level = "Other"),
-    discharge_location = fct_lump(discharge_location, n = 4, other_level = "Other")
+    first_careunit = fct_lump(first_careunit, n = 4, 
+                              other_level = "Other"),
+    last_careunit = fct_lump(last_careunit, n = 4, 
+                             other_level = "Other"),
+    admission_type = fct_lump(admission_type, n = 4, 
+                              other_level = "Other"),
+    admission_location = fct_lump(admission_location, n = 3, 
+                                  other_level = "Other"),
+    discharge_location = fct_lump(discharge_location, n = 4, 
+                                  other_level = "Other")
   )
 
 # Collapse levels of race into specified categories
@@ -245,11 +253,20 @@ mimic_icu_cohort <- mimic_icu_cohort %>%
   mutate(
     race = fct_collapse(
       race,
-      ASIAN = c("ASIAN", "ASIAN - ASIAN INDIAN", "ASIAN - CHINESE", "ASIAN - KOREAN", "ASIAN - SOUTH EAST ASIAN"),
-      BLACK = c("BLACK/AFRICAN", "BLACK/AFRICAN AMERICAN", "BLACK/CAPE VERDEAN", "BLACK/CARIBBEAN ISLAND"),
-      HISPANIC = c("HISPANIC OR LATINO", "HISPANIC/LATINO - CENTRAL AMERICAN", "HISPANIC/LATINO - COLUMBIAN", "HISPANIC/LATINO - CUBAN", "HISPANIC/LATINO - DOMINICAN", "HISPANIC/LATINO - GUATEMALAN", "HISPANIC/LATINO - HONDURAN", "HISPANIC/LATINO - MEXICAN", "HISPANIC/LATINO - PUERTO RICAN", "HISPANIC/LATINO - SALVADORAN"),
-      WHITE = c("WHITE", "WHITE - BRAZILIAN", "WHITE - EASTERN EUROPEAN", "WHITE - RUSSIAN", "WHITE - OTHER EUROPEAN"),
-      Other = c("OTHER", "UNABLE TO OBTAIN", "PATIENT DECLINED TO ANSWER", "UNKNOWN/NOT SPECIFIED")
+      ASIAN = c("ASIAN", "ASIAN - ASIAN INDIAN", "ASIAN - CHINESE", 
+                "ASIAN - KOREAN", "ASIAN - SOUTH EAST ASIAN"),
+      BLACK = c("BLACK/AFRICAN", "BLACK/AFRICAN AMERICAN", 
+                "BLACK/CAPE VERDEAN", "BLACK/CARIBBEAN ISLAND"),
+      HISPANIC = c("HISPANIC OR LATINO", "HISPANIC/LATINO - CENTRAL 
+                   AMERICAN", "HISPANIC/LATINO - COLUMBIAN", 
+                   "HISPANIC/LATINO - CUBAN",
+                   "HISPANIC/LATINO - DOMINICAN", "HISPANIC/LATINO - GUATEMALAN", 
+                   "HISPANIC/LATINO - HONDURAN", "HISPANIC/LATINO - MEXICAN", 
+                   "HISPANIC/LATINO - PUERTO RICAN", "HISPANIC/LATINO - SALVADORAN"),
+      WHITE = c("WHITE", "WHITE - BRAZILIAN", "WHITE - EASTERN EUROPEAN", 
+                "WHITE - RUSSIAN", "WHITE - OTHER EUROPEAN"),
+      Other = c("OTHER", "UNABLE TO OBTAIN", "PATIENT DECLINED TO ANSWER", 
+                "UNKNOWN/NOT SPECIFIED")
     )
   )
 
@@ -278,7 +295,8 @@ if (!dir.exists("mimiciv_shiny")) {
 }
 # save the final tibble
 mimic_icu_cohort |>
-  write_rds("mimiciv_shiny/mimic_icu_cohort.rds", compress = "gz")
+  write_rds("mimiciv_shiny/mimic_icu_cohort.rds", 
+            compress = "gz")
 ```
 Close database connection and clear workspace.
 ```{r}

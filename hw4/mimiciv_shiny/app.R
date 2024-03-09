@@ -66,7 +66,8 @@ ui <- fluidPage(
                                "Lab Events" = "labevents",
                                "Chart Events" = "chartevents"
                              )),
-                 checkboxInput("remove", "Remove outliers in IQR method for measurements?")
+                 checkboxInput("remove", "Remove outliers in IQR method 
+                               for measurements?")
                ),
                mainPanel(
                  plotOutput("cohort_plot"),
@@ -96,7 +97,8 @@ server <- function(input, output) {
     if(variable %in% c("labevents", "chartevents")) {
       if(variable == "labevents") {
         data <- mimic_icu_cohort %>%
-          select(potassium, sodium, glucose, creatinine, bicarbonate, chloride) %>%
+          select(potassium, sodium, glucose, creatinine,
+                 bicarbonate, chloride) %>%
           pivot_longer(cols = c("potassium", "sodium", "glucose", "creatinine", 
                                 "bicarbonate", "chloride"), 
                        names_to = "variable", values_to = "value")
@@ -143,12 +145,14 @@ server <- function(input, output) {
     if(variable %in% c("labevents", "chartevents")) {
       if(variable == "labevents") {
         summary_data <- summary(mimic_icu_cohort %>% 
-                                  select(potassium, sodium, glucose, creatinine, bicarbonate, chloride))
+                                  select(potassium, sodium, glucose, 
+                                         creatinine, bicarbonate, chloride))
       } else {
         summary_data <- summary(mimic_icu_cohort %>% 
                                   select(`respiratory rate`, `heart rate`, 
                                          `non invasive blood pressure systolic`, 
-                                         `non invasive blood pressure diastolic`, 
+                                         `non invasive blood pressure 
+                                         diastolic`, 
                                          `temperature fahrenheit`))
       }
     } else {
