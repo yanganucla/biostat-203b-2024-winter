@@ -19,14 +19,28 @@ Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop a
 
 1. Data preprocessing and feature engineering.
 
-2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. 
+
 ```{r}
-#| eval: false
+rm(list = ls())
+library(tidymodels)
+library(dplyr)
+
 set.seed(203)
+# Load data
+mimiciv_icu_cohort <- readRDS("/Users/yangan/Desktop/203B/203b-hw/hw4/mimiciv_shiny/mimic_icu_cohort.rds")
 
 # sort
 mimiciv_icu_cohort <- mimiciv_icu_cohort |>
-  arrange(subject_id, hadm_id, stay_id)
+  arrange(subject_id, hadm_id, stay_id) |>
+  select(-admit_provider_id, -last_careunit, -admission_type, -admission_location, -discharge_location, -insurance, -language,  -hospital_expire_flag) |>
+  na.omit() |>
+  mutate(los_long = los > 2) |>
+  select(-los) |>
+  print() 
+
+# 
+mimiciv_icu_cohort$los_long <- factor(mimiciv_icu_cohort$los_long)
 
 data_split <- initial_split(
   mimiciv_icu_cohort, 
@@ -36,6 +50,131 @@ data_split <- initial_split(
   )
 ```
 
+
+```{r}
+library(gtsummary)
+# Numerical summaries stratified by the outcome `los_long`.
+mimiciv_icu_cohort |> tbl_summary(by = los_long)
+```
+
+
 3. Train and tune the models using the training set.
 
+```{r}
+mimic_other <- training(data_split)
+dim(mimic_other)
+```
+```{r}
+mimic_test <- testing(data_split)
+dim(mimic_test)
+```
+###svm
+
+```{r}
+svm_recipe <- 
+  recipe(
+    los_long ~ ., 
+    data = mimic_other
+  ) |>
+  # create traditional dummy variables (necessary for svm)
+  step_dummy(all_nominal_predictors()) |>
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) |> 
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors()) |>
+  # estimate the means and standard deviations
+  # prep(training = Heart_other, retain = TRUE) |>
+  print()
+```
+
+```{r}
+svm_mod <- 
+  svm_rbf(
+    mode = "classification",
+    cost = tune(),
+    rbf_sigma = tune()
+  ) |> 
+  set_engine("kernlab")
+svm_mod
+```
+
+```{r}
+svm_wf <- workflow() |>
+  add_recipe(svm_recipe) |>
+  add_model(svm_mod)
+svm_wf
+```
+
+```{r}
+param_grid <- grid_regular(
+  cost(range = c(-8, 5)),
+  rbf_sigma(range = c(-5, -3)),
+  levels = c(14, 5)
+  )
+param_grid
+```
+
+```{r}
+set.seed(203)
+
+folds <- vfold_cv(mimic_other, v = 5)
+folds
+```
+
+```{r}
+svm_fit <- svm_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+svm_fit
+```
+
+
+
+
+```{r}
+svm_fit |>
+  collect_metrics() |>
+  print(width = Inf) |>
+  filter(.metric == "roc_auc") |>
+  ggplot(mapping = aes(x = cost, y = mean, color = factor(rbf_sigma))) +
+  geom_point() +
+  labs(x = "Cost", y = "CV AUC") +
+  scale_x_log10()
+```
+
+```{r}
+svm_fit |>
+  show_best("roc_auc")
+```
+```{r}
+best_svm <- svm_fit |>
+  select_best("roc_auc")
+best_svm
+```
+
+```{r}
+# Final workflow
+final_wf <- svm_wf |>
+  finalize_workflow(best_svm)
+final_wf
+```
+
+```{r}
+# Fit the whole training set, then predict the test cases
+final_fit <- 
+  final_wf |>
+  last_fit(data_split)
+final_fit
+```
+
+```{r}
+# Test metrics
+final_fit |> 
+  collect_metrics()
+```
+  
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+
