@@ -176,5 +176,118 @@ final_fit |>
   collect_metrics()
 ```
   
+###random forest
+
+```{r}
+library(GGally)
+library(gtsummary)
+library(ranger)
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <- 
+  recipe(
+    los_long ~ ., 
+    data = mimic_other
+  ) |>
+  # create traditional dummy variables (necessary for svm)
+  #step_dummy(all_nominal_predictors()) |>
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) |> 
+  # center and scale numeric data
+  #step_normalize(all_numeric_predictors()) |>
+  # estimate the means and standard deviations
+  # prep(training = Heart_other, retain = TRUE) |>
+  print()
+```
+
+```{r}
+rf_mod <- 
+  rand_forest(
+    mode = "classification",
+    mtry = tune(),
+    trees = tune()
+  ) |> 
+  set_engine("ranger")
+rf_mod
+```
+
+```{r}
+rf_wf <- workflow() |>
+  add_recipe(rf_recipe) |>
+  add_model(rf_mod)
+rf_wf
+```
+
+```{r}
+param_grid <- grid_regular(
+  trees(range = c(100L, 500L)),
+  mtry(range = c(1L, 5L)),
+  levels = c(5, 5)
+  )
+param_grid
+```
+
+```{r}
+set.seed(203)
+
+folds <- vfold_cv(mimic_other, v = 5)
+folds
+```
+
+```{r}
+rf_fit <- rf_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+rf_fit
+```
+
+
+
+
+```{r}
+rf_fit |>
+  collect_metrics() |>
+  print(width = Inf) |>
+  filter(.metric == "roc_auc") |>
+  ggplot(mapping = aes(x = trees, y = mean, color = factor(mtry))) +
+  geom_point() +
+  labs(x = "Num. of Trees", y = "CV AUC") 
+```
+
+```{r}
+rf_fit |>
+  show_best("roc_auc")
+```
+```{r}
+best_rf <- rf_fit |>
+  select_best("roc_auc")
+best_rf
+```
+
+```{r}
+# Final workflow
+final_wf <- rf_wf |>
+  finalize_workflow(best_rf)
+final_wf
+```
+
+```{r}
+# Fit the whole training set, then predict the test cases
+final_fit <- 
+  final_wf |>
+  last_fit(data_split)
+final_fit
+```
+
+```{r}
+# Test metrics
+final_fit |> 
+  collect_metrics()
+```
+
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
 
