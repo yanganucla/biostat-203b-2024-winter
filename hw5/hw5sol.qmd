@@ -220,12 +220,12 @@ rf_wf
 ```
 
 ```{r}
-param_grid <- grid_regular(
+param_grid2 <- grid_regular(
   trees(range = c(100L, 500L)),
   mtry(range = c(1L, 5L)),
   levels = c(5, 5)
   )
-param_grid
+param_grid2
 ```
 
 ```{r}
@@ -239,7 +239,7 @@ folds
 rf_fit <- rf_wf |>
   tune_grid(
     resamples = folds,
-    grid = param_grid,
+    grid = param_grid2,
     metrics = metric_set(roc_auc, accuracy)
     )
 rf_fit
@@ -270,24 +270,135 @@ best_rf
 
 ```{r}
 # Final workflow
-final_wf <- rf_wf |>
+final_wf2 <- rf_wf |>
   finalize_workflow(best_rf)
-final_wf
+final_wf2
 ```
 
 ```{r}
 # Fit the whole training set, then predict the test cases
-final_fit <- 
+final_fit2 <- 
   final_wf |>
   last_fit(data_split)
-final_fit
+final_fit2
 ```
 
 ```{r}
 # Test metrics
-final_fit |> 
+final_fit2 |> 
   collect_metrics()
 ```
 
+###XGBoost
+
+```{r}
+library(GGally)
+library(gtsummary)
+library(ranger)
+library(tidyverse)
+library(tidymodels)
+library(xgboost)
+
+gb_recipe <- 
+  recipe(
+    los_long ~ ., 
+    data = mimic_other
+  ) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_date(all_datetime()) %>%
+  step_rm(starts_with(c("intime", "outtime", "admittime", "dischtime", "deathtime", "edregtime", "edouttime", "dod")))
+gb_recipe
+
+```
+
+```{r}
+gb_mod <- 
+  boost_tree(
+    mode = "classification",
+    trees = 1000,
+    tree_depth = tune(),
+    learn_rate = tune()
+  ) |> 
+  set_engine("xgboost")
+gb_mod
+```
+
+```{r}
+gb_wf <- workflow() |>
+  add_recipe(gb_recipe) |>
+  add_model(gb_mod)
+gb_wf
+```
+
+```{r}
+param_grid3 <- grid_regular(
+  tree_depth(range = c(1L, 3L)),
+  learn_rate(range = c(-5, 2), trans = log10_trans()),
+  levels = c(3,10)
+  )
+param_grid3
+```
+
+```{r}
+set.seed(203)
+
+folds <- vfold_cv(mimic_other, v = 5)
+folds
+```
+
+```{r}
+gb_fit <- gb_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = param_grid3,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+gb_fit
+```
+
+
+
+
+```{r}
+gb_fit |>
+  collect_metrics() |>
+  print(width = Inf) |>
+  filter(.metric == "roc_auc") |>
+  ggplot(mapping = aes(x = learn_rate, y = mean, color = factor(tree_depth))) +
+  geom_point() +
+  labs(x = "Learning Rate", y = "CV AUC") +
+  scale_x_log10()
+```
+
+```{r}
+gb_fit |>
+  show_best("roc_auc")
+```
+```{r}
+best_gb <- gb_fit |>
+  select_best("roc_auc")
+best_gb
+```
+
+```{r}
+# Final workflow
+final_wf3 <- gb_wf |>
+  finalize_workflow(best_gb)
+final_wf3
+```
+
+```{r}
+# Fit the whole training set, then predict the test cases
+final_fit3 <- 
+  final_wf3 |>
+  last_fit(data_split)
+final_fit3
+```
+
+```{r}
+# Test metrics
+final_fit3 |> 
+  collect_metrics()
+```
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
 
