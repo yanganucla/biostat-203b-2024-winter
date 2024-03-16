@@ -25,7 +25,12 @@ Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop a
 rm(list = ls())
 library(tidymodels)
 library(dplyr)
-
+library(bigrquery)
+library(dbplyr)
+library(DBI)
+library(gt)
+library(gtsummary)
+library(tidyverse)
 set.seed(203)
 # Load data
 mimiciv_icu_cohort <- readRDS("/Users/yangan/Desktop/203B/203b-hw/hw4/mimiciv_shiny/mimic_icu_cohort.rds")
@@ -33,14 +38,25 @@ mimiciv_icu_cohort <- readRDS("/Users/yangan/Desktop/203B/203b-hw/hw4/mimiciv_sh
 # sort
 mimiciv_icu_cohort <- mimiciv_icu_cohort |>
   arrange(subject_id, hadm_id, stay_id) |>
-  select(-admit_provider_id, -last_careunit, -admission_type, -admission_location, -discharge_location, -insurance, -language,  -hospital_expire_flag) |>
-  na.omit() |>
+  select(-admit_provider_id, -last_careunit, -hospital_expire_flag, -dod, 
+         ) |>
   mutate(los_long = los > 2) |>
-  select(-los) |>
+  mutate(age = anchor_age + year(intime) - anchor_year) |>
+  mutate(age = ifelse(age < 0, NA, age)) |>
+  mutate(age = as.numeric(age)) |>
+  mutate(los_long = as.factor(los_long)) |>
+  mutate(race = as.factor(race)) |>
+  mutate(marital_status = as.factor(marital_status)) |>
+  mutate(gender = as.factor(gender)) |>
+  mutate(langeuage = as.factor(language)) |>
+  mutate(insurance = as.factor(insurance)) |>
+  mutate(admission_type = as.factor(admission_type)) |>
+  mutate(admission_location = as.factor(admission_location)) |>
+  mutate(discharge_location = as.factor(discharge_location)) |>
+  mutate(age = as.numeric(age)) |>
+  select(-los, -anchor_age, -anchor_year, -anchor_year_group) |>
+  na.omit() |>
   print() 
-
-# 
-mimiciv_icu_cohort$los_long <- factor(mimiciv_icu_cohort$los_long)
 
 data_split <- initial_split(
   mimiciv_icu_cohort, 
@@ -73,7 +89,12 @@ dim(mimic_test)
 ```{r}
 svm_recipe <- 
   recipe(
-    los_long ~ ., 
+    los_long ~ first_careunit + admission_location + insurance + language +
+      marital_status + race + gender + age + wbc + bicarbonate + glucose + 
+      sodium + creatinine + chloride + hematocrit + potassium + 
+      `non invasive blood pressure systolic` + 
+      `non invasive blood pressure diastolic` + 
+      `respiratory rate` + `heart rate` + `temperature fahrenheit`,
     data = mimic_other
   ) |>
   # create traditional dummy variables (necessary for svm)
@@ -82,9 +103,8 @@ svm_recipe <-
   step_zv(all_numeric_predictors()) |> 
   # center and scale numeric data
   step_normalize(all_numeric_predictors()) |>
-  # estimate the means and standard deviations
-  # prep(training = Heart_other, retain = TRUE) |>
   print()
+
 ```
 
 ```{r}
@@ -187,7 +207,12 @@ library(tidymodels)
 
 rf_recipe <- 
   recipe(
-    los_long ~ ., 
+        los_long ~ first_careunit + admission_location + insurance + language +
+      marital_status + race + gender + age + wbc + bicarbonate + glucose + 
+      sodium + creatinine + chloride + hematocrit + potassium + 
+      `non invasive blood pressure systolic` + 
+      `non invasive blood pressure diastolic` + 
+      `respiratory rate` + `heart rate` + `temperature fahrenheit`,
     data = mimic_other
   ) |>
   # create traditional dummy variables (necessary for svm)
@@ -301,7 +326,12 @@ library(xgboost)
 
 gb_recipe <- 
   recipe(
-    los_long ~ ., 
+        los_long ~ first_careunit + admission_location + insurance + language +
+      marital_status + race + gender + age + wbc + bicarbonate + glucose + 
+      sodium + creatinine + chloride + hematocrit + potassium + 
+      `non invasive blood pressure systolic` + 
+      `non invasive blood pressure diastolic` + 
+      `respiratory rate` + `heart rate` + `temperature fahrenheit`,
     data = mimic_other
   ) %>%
   step_dummy(all_nominal_predictors()) %>%
@@ -400,5 +430,227 @@ final_fit3
 final_fit3 |> 
   collect_metrics()
 ```
+### model stacking approach
+
+```{r}
+library(gtsummary)
+library(keras)
+library(ranger)
+library(stacks)
+library(tidyverse)
+library(tidymodels)
+library(xgboost)
+mimic_recipe <- 
+  recipe(
+       los_long ~ first_careunit + admission_location + insurance + language +
+      marital_status + race + gender + age + wbc + bicarbonate + glucose + 
+      sodium + creatinine + chloride + hematocrit + potassium + 
+      `non invasive blood pressure systolic` + 
+      `non invasive blood pressure diastolic` + 
+      `respiratory rate` + `heart rate` + `temperature fahrenheit`,
+    data = mimic_other
+  ) |>
+  # create traditional dummy variables (necessary for xgboost)
+  step_dummy(all_nominal_predictors()) |>
+  # zero-variance filter
+  step_zv(all_predictors()) 
+  # estimate the means and standard deviations
+  # prep(training = Heart_other, retain = TRUE)
+mimic_recipe
+```
+
+```{r}
+set.seed(203)
+folds <- vfold_cv(mimic_other, v = 5)
+folds
+```
+####logistic regression
+```{r}
+logit_mod <- 
+  logistic_reg(
+    penalty = tune(), 
+    mixture = tune()
+  ) |> 
+  set_engine("glmnet", standardize = TRUE)
+logit_mod
+```
+
+```{r}
+logit_wf <- workflow() |>
+  add_recipe(mimic_recipe) |>
+  add_model(logit_mod)
+logit_wf
+```
+
+```{r}
+logit_grid <- grid_regular(
+  penalty(range = c(-6, 3)), 
+  mixture(),
+  levels = c(100, 5)
+  )
+
+logit_res <- 
+  tune_grid(
+    object = logit_wf,
+    resamples = folds,
+    grid = logit_grid,
+    control = control_stack_grid()
+  )
+
+logit_res
+```
+####random forest
+```{r}
+rf_mod2 <- 
+  rand_forest(
+    mode = "classification",
+    # Number of predictors randomly sampled in each split
+    mtry = tune(),
+    # Number of trees in ensemble
+    trees = tune()
+  ) |>
+  set_engine("ranger")
+rf_mod2
+```
+
+```{r}
+rf_wf2 <- workflow() |>
+  add_recipe(mimic_recipe) |>
+  add_model(rf_mod2)
+rf_wf2
+```
+
+```{r}
+rf_grid2 <- grid_regular(
+  trees(range = c(100L, 500L)), 
+  mtry(range = c(1L, 5L)),
+  levels = c(5, 5)
+  )
+
+rf_res2 <- 
+  tune_grid(
+    object = rf_wf2, 
+    resamples = folds, 
+    grid = rf_grid2,
+    control = control_stack_grid()
+  )
+rf_res2
+```
+
+####XGboost
+```{r}
+gb_mod1 <- 
+  boost_tree(
+    mode = "classification",
+    trees = 1000,
+    tree_depth = tune(),
+    learn_rate = tune()
+  ) |> 
+  set_engine("xgboost")
+gb_mod1
+```
+
+```{r}
+gb_wf1 <- workflow() |>
+  add_recipe(mimic_recipe) |>
+  add_model(gb_mod1)
+gb_wf1
+```
+
+```{r}
+gb_grid1 <- grid_regular(
+  tree_depth(range = c(1L, 3L)),
+  learn_rate(range = c(-5, 2), trans = log10_trans()),
+  levels = c(3,10)
+  )
+
+gb_res1 <- 
+  tune_grid(
+    object = gb_wf1, 
+    resamples = folds, 
+    grid = gb_grid1,
+    control = control_stack_grid()
+  )
+gb_res1
+```
+
+
+```{r}
+mimic_model_st <- 
+  # initialize the stack
+  stacks() |>
+  # add candidate members
+  add_candidates(logit_res) |>
+  add_candidates(rf_res2) |>
+  add_candidates(gb_res1) |>
+  # determine how to combine their predictions
+  blend_predictions(
+    penalty = 10^(-6:2),
+    metrics = c("roc_auc")
+    ) |>
+  # fit the candidates with nonzero stacking coefficients
+  fit_members()
+mimic_model_st
+```
+
+```{r}
+mimic_model_st
+```
+
+```{r}
+autoplot(mimic_model_st)
+```
+
+```{r}
+autoplot(mimic_model_st, type = "members")
+```
+
+```{r}
+autoplot(mimic_model_st, type = "weights")
+```
+
+```{r}
+collect_parameters(mimic_model_st, "rf_res2")
+```
+
+```{r}
+mimic_pred <- mimic_test %>%
+  bind_cols(predict(mimic_model_st, ., type = "prob")) %>%
+  print(width = Inf)
+```
+
+```{r}
+yardstick::roc_auc(
+  mimic_pred,
+  truth = los_long,
+  contains(".pred_FALSE")
+  )
+```
+We can use the members argument to generate predictions from each of the ensemble members.
+```{r}
+mimic_pred <-
+  mimic_test |>
+  select(los_long) |>
+  bind_cols(
+    predict(
+      mimic_model_st,
+      mimic_test,
+      type = "class",
+      members = TRUE
+      )
+    ) |>
+  print(width = Inf)
+```
+
+```{r}
+map(
+  colnames(mimic_pred),
+  ~mean(mimic_pred$los_long == pull(mimic_pred, .x))
+  ) |>
+  set_names(colnames(mimic_pred)) |>
+  as_tibble() |>
+  pivot_longer(c(everything(), -los_long))
+```
+
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
 
