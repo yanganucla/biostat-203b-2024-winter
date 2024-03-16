@@ -472,40 +472,41 @@ set.seed(203)
 folds <- vfold_cv(mimic_other, v = 5)
 folds
 ```
-####logistic regression
+####svm
 ```{r}
-logit_mod <- 
-  logistic_reg(
-    penalty = tune(), 
-    mixture = tune()
-  ) |> 
-  set_engine("glmnet", standardize = TRUE)
-logit_mod
+svm_mod2 <- 
+  svm_rbf(
+    mode = "classification",
+    cost = tune(),
+    rbf_sigma = tune()
+  ) |>
+  set_engine("kernlab")
+svm_mod2
 ```
 
 ```{r}
-logit_wf <- workflow() |>
+svm_wf2 <- workflow() |>
   add_recipe(mimic_recipe) |>
-  add_model(logit_mod)
-logit_wf
+  add_model(svm_mod2)
+svm_wf2
 ```
 
 ```{r}
-logit_grid <- grid_regular(
-  penalty(range = c(-6, 3)), 
-  mixture(),
-  levels = c(100, 5)
+svm_grid2 <- grid_regular(
+  cost(range = c(-8, 5)),
+  rbf_sigma(range = c(-5, -3)),
+  levels = c(14, 5)
   )
 
-logit_res <- 
+svm_res2 <- 
   tune_grid(
-    object = logit_wf,
+    object = svm_wf2,
     resamples = folds,
-    grid = logit_grid,
+    grid = svm_grid2,
     control = control_stack_grid()
   )
 
-logit_res
+svm_res2
 ```
 ####random forest
 ```{r}
@@ -547,7 +548,7 @@ rf_res2
 
 ####XGboost
 ```{r}
-gb_mod1 <- 
+gb_mod2 <- 
   boost_tree(
     mode = "classification",
     trees = 1000,
@@ -555,31 +556,31 @@ gb_mod1 <-
     learn_rate = tune()
   ) |> 
   set_engine("xgboost")
-gb_mod1
+gb_mod2
 ```
 
 ```{r}
-gb_wf1 <- workflow() |>
+gb_wf2 <- workflow() |>
   add_recipe(mimic_recipe) |>
-  add_model(gb_mod1)
-gb_wf1
+  add_model(gb_mod2)
+gb_wf2
 ```
 
 ```{r}
-gb_grid1 <- grid_regular(
+gb_grid2 <- grid_regular(
   tree_depth(range = c(1L, 3L)),
   learn_rate(range = c(-5, 2), trans = log10_trans()),
   levels = c(3,10)
   )
 
-gb_res1 <- 
+gb_res2 <- 
   tune_grid(
-    object = gb_wf1, 
+    object = gb_wf2, 
     resamples = folds, 
-    grid = gb_grid1,
+    grid = gb_grid2,
     control = control_stack_grid()
   )
-gb_res1
+gb_res2
 ```
 
 
@@ -588,9 +589,9 @@ mimic_model_st <-
   # initialize the stack
   stacks() |>
   # add candidate members
-  add_candidates(logit_res) |>
+  add_candidates(svm_res2) |>
   add_candidates(rf_res2) |>
-  add_candidates(gb_res1) |>
+  add_candidates(gb_res2) |>
   # determine how to combine their predictions
   blend_predictions(
     penalty = 10^(-6:2),
@@ -712,11 +713,13 @@ final_fit3 %>%
 
 In my analysis, there were n = 3748 patients in the MIMIC-IV ICU cohort, and 50/50 split.
 I build three machine learning models and a model stacking to predict long ICU stays. The three models are logistic regression, random forest, and xgboost. The model stacking is a combination of the three models. The area under the ROC curve and accuracy for each machine learning algorithm and the model stacking are as follows:
-- SVM: AUC = 0.62, Accuracy = 0.57
-- Random Forest: AUC = 0.62, Accuracy = 0.57
-- XGBoost: AUC = 0.61, Accuracy = 0.52
-- Stacking: AUC = 0.57
-SVM and Random Foreset model are the best model with 0.62 AUC and 0.57 accuracy. 
-The most important features in predicting long ICU stays are the age of the patient, temperature fahrenheit, and heart rate. High heart rate is predictive of long term stay
-because it is a sign of stress and the body is working harder to maintain the body temperature.
+- SVM: AUC = 0.56, Accuracy = 0.62
+- Random Forest: AUC = 0.57, Accuracy = 0.62
+- XGBoost: AUC = 0.52, Accuracy = 0.61
+- Stacking: AUC = 0.57, Accuracy = 0.63
+Stacking is the best model with 0.57 AUC and 0.63 accuracy, followed by random forest with 0.57 AUC and 0.62 accuracy, and SVM with 0.56 AUC and 0.62 accuracy.
+XGBoost has the lowest AUC and accuracy.
+The most important features in predicting long ICU stays are the age of the patient, temperature fahrenheit, and heart rate. High heart rate is predictive of long term stay because it is a sign of stress and the body is working harder to maintain the body temperature. 
+The stacking model has the best performance and is the most interpretable. The stacking model is the best model for predicting long ICU stays.
+
 
