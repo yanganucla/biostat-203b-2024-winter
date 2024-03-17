@@ -51,70 +51,100 @@ Hint: We need to pull information from data files `patients.csv.gz`, `admissions
 ```{r}
 sid <- 10013310 
 ```
-
-Import 'transfer.csv.gz' as a tibble 'transfers_tbl':
-
+Patients info:
+```{r}
+sid_info <- read_csv("~/mimic/hosp/patients.csv.gz") |>
+  filter(subject_id == sid) |>
+  print(width = Inf)
+```
+ADT information:
 ```{r}
 sid_adt <- read_csv("~/mimic/hosp/transfers.csv.gz") |>
   filter(subject_id == sid) |>
   print(width = Inf)
 ```
-
+Admissions:
 ```{r}
-sid_procedure <- read_csv("~/mimic/hosp/procedures_icd.csv.gz") |>
+sid_adm <- read_csv("~/mimic/hosp/admissions.csv.gz") |>
   filter(subject_id == sid) |>
   print(width = Inf)
 ```
+Lab event:
 ```{r}
-sid_icd_procedure <- read_csv("~/mimic/hosp/d_icd_procedures.csv.gz") |>
+sid_lab <- open_dataset("labevents_pq") |>
+  filter(subject_id == sid) |>
+  collect() |>
+  print(width = Inf)
+```
+Procedure:
+```{r}
+sid_proc <- read_csv("~/mimic/hosp/procedures_icd.csv.gz",
+  show_col_types = FALSE
+ ) |>
+  filter(subject_id == sid) |>
+  left_join(read_csv("~/mimic/hosp/d_icd_procedures.csv.gz", show_col_types = FALSE), by = c("icd_code", "icd_version")
+  ) |>
+  print(width = Inf)
+```
+Diagnosis:
+```{r}
+sid_diag <- read_csv("~/mimic/hosp/diagnoses_icd.csv.gz",
+  show_col_types = FALSE
+ ) |>
+  filter(subject_id == sid) |>
+  left_join(read_csv("~/mimic/hosp/d_icd_diagnoses.csv.gz", show_col_types = FALSE), by = c("icd_code", "icd_version")
+  ) |>
   print(width = Inf)
 ```
 
-```{r}
-sid_procedures_final <- left_join(sid_procedure, sid_icd_procedure, by = c("icd_code" = "icd_code")) |>
-  select(subject_id, chartdate, icd_code, long_title) |>
-  print(width = Inf)
-```
 
 
-```{bash}
-#| eval: false
-zcat < ~/mimic/hosp/labevents.csv.gz > labevents.csv
-```
-
-```{r}
-#| eval: false
-sid <- 10013310 
-sid_lab <- arrow::write_dataset(labevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet")
-  sid_lab <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet") %>%
-    filter(subject_id %in% sid) %>%
-    collect() 
-```
-
-```{r}
-head(sid_lab, 10)
-```
-
-```{r}
-sid_procedures_final$chartdate <- as.POSIXct(sid_procedure$chartdate)
-sid_lab$charttime <- as.POSIXct(sid_lab$charttime)
-```
-
-
+Visualize:
 ```{r}
 ggplot() +
-  geom_segment(data = sid_adt %>%
-                 filter(eventtype != "discharge"), 
-               aes(x = intime, xend = outtime, y = "ADT", yend = "ADT", color = careunit, linewidth = str_detect(careunit, "(ICU|CCU)")),
-               lineend = "square") +
-  geom_point(data = sid_lab, aes(x = charttime, y = "Lab"), shape = 3, size = 3, color = "black") +
-  geom_point(data = sid_procedures_final, aes(x = chartdate, y = "Procedure", shape = long_title), size = 3, color = "black") +
-  labs(title = "Patient 10013310,F,70 years old",
-       subtitle = "Measurement of Cardiac Sampling and Pressure, Left Heart, Percutaneous Approach, Fluoroscopy of Multiple Coronary Arteries using Low Osmolar Contrast, Ultrasonography of Multiple Coronary Arteries, Intravasc",
-       x = "Calendar Time",
-       y = "") +
-  theme_minimal(base_size = 5) +
-  scale_y_discrete(limits = c("Procedure", "Lab","ADT"))
+  geom_segment(
+    data = sid_adt |> filter(eventtype != "discharge"), 
+    mapping = aes(
+      x = intime, 
+      xend = outtime, 
+      y = "ADT", 
+      yend = "ADT", 
+      color = careunit, 
+      linewidth = str_detect(careunit, "(ICU|CCU)")
+      ),
+  ) +
+  geom_point(data = sid_lab |> distinct(charttime, .keep_all = TRUE),
+             mapping = aes(x = charttime, y = "Lab"),
+             shape = '+', 
+             size = 5
+             ) +
+  geom_jitter(
+    data = sid_proc,
+    mapping = aes(x = chartdate + hours(12),
+                  y = "Procedure", 
+                  shape = str_sub(long_title, 1, 25)
+                  ),
+    size = 3,
+    height = 0
+  ) +
+  labs(
+    title = str_c(
+      "Patient ", sid, ", ",
+      sid_info$gender, ", ",
+      sid_info$anchor_age + year(sid_adm$admittime[1]) - sid_info$anchor_year, 
+      "years old, ",
+      str_to_lower(sid_adm$race[1])
+    ),
+    subtitle = str_c(str_to_lower(sid_diag$long_title[1:3]), collapse = "\n"),
+    x = "Calendar Time",
+    y = "",
+    color = "Care Unit",
+    shape = "Procedure"
+  ) +
+  guides(linewidth = "none") +
+  scale_y_discrete(limits = rev) +
+  theme_light() +
+  theme(legend.position = "bottom", legend.box = "vertical")
 
 ```
 
@@ -177,18 +207,101 @@ sid_1.2_final2 <- sid_1.2_final %>%
 ```
 
 
-```{r}
+```{r, warning=FALSE, fig.height=6, fig.width=12}
 ggplot(data = sid_1.2_final2) + 
-  geom_point(mapping = aes(x = charttime, y = valuenum, color = abbreviation)) + geom_line(mapping = aes(x = charttime, y = valuenum, color = abbreviation)) +
-  facet_grid(abbreviation ~ stay_id, scales = "free_y") +
-  labs(x = "Calendar Time", y = "Value of Vital", title = "Vitals of Patient 10013310 During ICU Stays")
+  geom_point(mapping = aes(x = charttime, y = valuenum, color = factor(abbreviation))) + 
+  geom_line(mapping = aes(x = charttime, y = valuenum, color = factor(abbreviation))) +
+  facet_grid(vars(abbreviation), vars(stay_id), scales = "free_y") +
+  theme_minimal() +
+  theme( strip.placement = "outside", 
+         legend.position = "none",
+         strip.background = element_rect(fill = "grey", 
+                                         color = "white"),
+         strip.text.x = element_text(color = "white"), 
+         strip.text.y = element_text(color = "white")) +
+  labs(
+    x = "",
+    y = "",
+    title = str_c("Patient ",sid, " ICU stays - Vitals"))+
+  scale_x_datetime(date_labels = "%b %d %H:%M", 
+                   guide = guide_axis(n.dodge = 2))
+
 ```
 ```{r}
 ggsave("10013310_icu.png")
 ```
 ![](10013310_icu.png)
+```{r}
+sid <- 10013310 
+```
+
+```{r}
+sid_icu <- read_csv("~/mimic/icu/icustays.csv.gz", 
+                    show_col_types = FALSE) |>
+  filter(subject_id == sid) 
+```
+
+```{r}
+sid_chart <- arrow::open_dataset("chartevents_pq", 
+                                 format = "parquet") |>
+  dplyr::filter(subject_id == sid) |>
+  dplyr::filter(itemid %in% c(220045, 
+                              220180,
+                              220179,
+                              223761,
+                              220210)) |>
+  collect() 
+```
+
+```{r}
+merged_data <- sid_icu |> 
+  left_join(sid_chart, by = "stay_id")
+
+merged_data$item_label <- 
+  factor(merged_data$itemid,
+         levels = c('220045', 
+                    '220180', 
+                    '220179', 
+                    '220210', 
+                    '223761'),
+         labels = c('HR',
+                    'NBPd',
+                    'NBPs',
+                    'RR',
+                    'Temperature Fahrenheit'))
+```
 
 
+```{r, warning=FALSE, fig.height=6, fig.width=12}
+sid_icu |>
+  ggplot() +
+  
+  geom_line(data = merged_data, aes(x = charttime,
+                                    y = valuenum, 
+                                    color = factor(itemid))) +
+  
+  geom_point(data = merged_data, aes(x = charttime,
+                                     y = valuenum,
+                                     color = factor(itemid))) +
+  
+  facet_grid(vars(item_label), vars(stay_id), scales = "free") +
+  
+  theme_minimal() +
+  theme( strip.placement = "outside", 
+         legend.position = "none",
+         strip.background = element_rect(fill = "grey", 
+                                         color = "white"),
+         strip.text.x = element_text(color = "white"), 
+         strip.text.y = element_text(color = "white")) +
+  
+  labs(
+    x = "",
+    y = "",
+    title = str_c("Patient ",sid, " ICU stays - Vitals"))+
+  scale_x_datetime(date_labels = "%b %d %H:%M", 
+                   guide = guide_axis(n.dodge = 2))
+
+```
 
 ## Q2. ICU stays
 
@@ -401,13 +514,21 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
 
 ```{r}
-#| eval: false
-labevents_tble1 <- arrow::write_dataset(labevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw2/labevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw2/labevents_pq", format = "parquet")
-
-  labevents_tble1 <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/labevents_pq", format = "parquet") %>%
-    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
-    collect() 
+rm(list = ls())
 ```
+
+
+
+```{r}
+labevents_tble1 <- arrow::open_dataset("labevents_pq", format = "parquet") %>%
+  filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+  collect() 
+```
+
+```{r}
+labevents_tble1
+```
+
 
 ```{r}
 d_labitems_tble <- read_csv("~/mimic/hosp/d_labitems.csv.gz") |>
