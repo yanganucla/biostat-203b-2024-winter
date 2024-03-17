@@ -82,7 +82,8 @@ sid_proc <- read_csv("~/mimic/hosp/procedures_icd.csv.gz",
   show_col_types = FALSE
  ) |>
   filter(subject_id == sid) |>
-  left_join(read_csv("~/mimic/hosp/d_icd_procedures.csv.gz", show_col_types = FALSE), by = c("icd_code", "icd_version")
+  left_join(read_csv("~/mimic/hosp/d_icd_procedures.csv.gz", 
+                     show_col_types = FALSE), by = c("icd_code", "icd_version")
   ) |>
   print(width = Inf)
 ```
@@ -92,7 +93,8 @@ sid_diag <- read_csv("~/mimic/hosp/diagnoses_icd.csv.gz",
   show_col_types = FALSE
  ) |>
   filter(subject_id == sid) |>
-  left_join(read_csv("~/mimic/hosp/d_icd_diagnoses.csv.gz", show_col_types = FALSE), by = c("icd_code", "icd_version")
+  left_join(read_csv("~/mimic/hosp/d_icd_diagnoses.csv.gz", 
+                     show_col_types = FALSE), by = c("icd_code", "icd_version")
   ) |>
   print(width = Inf)
 ```
@@ -165,7 +167,7 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 
 Do a similar visualization for the patient `10013310`.
 
-![](10013310_icu.png)
+
 ```{r}
 sid <- 10013310 
 ```
@@ -238,6 +240,13 @@ sid_icu |>
 
 ```
 
+```{r}
+# save the plot
+ggsave("10013310_icu.png")
+
+```
+
+![](10013310_icu.png)
 ## Q2. ICU stays
 
 `icustays.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/icu/icustays/>) contains data about Intensive Care Units (ICU) stays. The first 10 lines are
@@ -530,7 +539,9 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 
 ![](chartevents_tble.png)
 
-Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `chartevents_pq` folder available at the current working directory, for example, by a symbolic link.
+Hint: Use the Parquet format you generated in Homework 2. For reproducibility, 
+make `chartevents_pq` folder available at the current working directory, 
+for example, by a symbolic link.
 
 ```{r}
 chartevents_tble1 <- open_dataset("chartevents_pq") |>
@@ -585,7 +596,9 @@ print(chartevents_tble, width = Inf)
 
 ## Q7. Putting things together
 
-Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all ICU stays of adults (age at `intime` >= 18) and columns contain at least following variables
+Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all 
+ICU stays of adults (age at `intime` >= 18) and columns contain at least 
+following variables
 
 - all variables in `icustays_tble`  
 - all variables in `admissions_tble`  
@@ -593,7 +606,8 @@ Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all 
 - the last lab measurements before the ICU stay in `labevents_tble` 
 - the first vital measurements during the ICU stay in `chartevents_tble`
 
-The final `mimic_icu_cohort` should have one row per ICU stay and columns for each variable.
+The final `mimic_icu_cohort` should have one row per ICU stay and columns 
+for each variable.
 
 ![](mimic_icu_cohort.png)
 ```{r}
@@ -627,7 +641,6 @@ patients_tble <- read.csv("~/mimic/hosp/patients.csv.gz") |>
 
 ```
 
-```
 
 
 ## Q8. Exploratory data analysis (EDA)
@@ -652,7 +665,8 @@ library(ggplot2)
 data <- mimic_icu_cohort
 
 # Length of ICU stay vs demographic variables
-demographic_vars <- c("race", "insurance", "marital_status", "gender", "anchor_age")
+demographic_vars <- c("race", "insurance", "marital_status", "gender", 
+                      "anchor_age")
 for (var in demographic_vars) {
   summary_stats <- data %>% 
     group_by({{ var }}) %>% 
@@ -671,7 +685,8 @@ for (var in demographic_vars) {
 
 ```{r}
 # Length of ICU stay vs last available lab measurements
-lab_vars <- c("creatinine", "potassium", "sodium", "chloride", "bicarbonate", "hematocrit", "white_blood_cell_count", "glucose")
+lab_vars <- c("creatinine", "potassium", "sodium", "chloride", 
+              "bicarbonate", "hematocrit", "wbc", "glucose")
 for (var in lab_vars) {
   print(ggplot(data, aes_string(x = var, y = "los")) +
     geom_point() +
@@ -685,7 +700,9 @@ for (var in lab_vars) {
 
 ```{r}
 # Length of ICU stay vs average vital measurements within the first hour
-vital_vars <- c("Heart_Rate", "Systolic_BP", "Diastolic_BP", "Respiratory_Rate", "Temperature")
+vital_vars <- c("`heart rate`", "`non invasive blood pressure systolic`", 
+                "`non invasive blood pressure diastolic`", 
+                "`temperature fahrenheit`", "`respiratory rate`")
 for (var in vital_vars) {
   print(ggplot(data, aes_string(x = var, y = "los")) +
     geom_point() +
