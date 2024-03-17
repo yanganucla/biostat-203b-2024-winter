@@ -165,71 +165,6 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 
 Do a similar visualization for the patient `10013310`.
 
-
-```{r}
-#| eval: false
-chartevents_tble1 <- arrow::write_dataset(chartevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw3/chartevents_pq", format = "parquet")
-
-  chartevents_tble1 <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents_pq", format = "parquet") %>%
-    filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) %>%
-    collect() 
-```
-
-```{r}
-d_items_tble <- read_csv("~/mimic/icu/d_items.csv.gz") |>
-  print(width = Inf)
-```
-
-```{r}
-icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
-  print(width = Inf)
-```
-
-```{r}
-chartevents_tble1.2 <- chartevents_tble1 %>%
-  left_join(d_items_tble, by = c("itemid" = "itemid")) %>%
-  print(width = Inf)
-```
-
-```{r}
-sid <- 10013310 
-sid_1.2_final <- chartevents_tble1.2 %>%
-  filter(subject_id == sid) %>%
-  print(width = Inf)
-
-```
-
-```{r}
-sid_1.2_final2 <- sid_1.2_final %>%
-  left_join(icustays_tble, by = c("subject_id" = "subject_id", "hadm_id" = "hadm_id", "stay_id" = "stay_id")) %>%
-  filter(intime <= charttime, charttime <= outtime) %>%
-  print(width = Inf)
-```
-
-
-```{r, warning=FALSE, fig.height=6, fig.width=12}
-ggplot(data = sid_1.2_final2) + 
-  geom_point(mapping = aes(x = charttime, y = valuenum, color = factor(abbreviation))) + 
-  geom_line(mapping = aes(x = charttime, y = valuenum, color = factor(abbreviation))) +
-  facet_grid(vars(abbreviation), vars(stay_id), scales = "free_y") +
-  theme_minimal() +
-  theme( strip.placement = "outside", 
-         legend.position = "none",
-         strip.background = element_rect(fill = "grey", 
-                                         color = "white"),
-         strip.text.x = element_text(color = "white"), 
-         strip.text.y = element_text(color = "white")) +
-  labs(
-    x = "",
-    y = "",
-    title = str_c("Patient ",sid, " ICU stays - Vitals"))+
-  scale_x_datetime(date_labels = "%b %d %H:%M", 
-                   guide = guide_axis(n.dodge = 2))
-
-```
-```{r}
-ggsave("10013310_icu.png")
-```
 ![](10013310_icu.png)
 ```{r}
 sid <- 10013310 
@@ -511,67 +446,71 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 
 
-Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
+Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.（write in ternimal)
 
 ```{r}
-rm(list = ls())
-```
-
-
-
-```{r}
-labevents_tble1 <- arrow::open_dataset("labevents_pq", format = "parquet") %>%
-  filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
-  collect() 
-```
-
-```{r}
-labevents_tble1
-```
-
-
-```{r}
-d_labitems_tble <- read_csv("~/mimic/hosp/d_labitems.csv.gz") |>
+dlabitems_tble <- 
+  read_csv("~/mimic/hosp/d_labitems.csv.gz", show_col_types = FALSE) |>
+  filter(itemid %in% c(
+    50912, 
+    50971, 
+    50983, 
+    50902, 
+    50882, 
+    51221, 
+    51301, 
+    50931    
+    )) |>
+  mutate(itemid = as.integer(itemid)) |>
   print(width = Inf)
 ```
-
 ```{r}
 icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
   print(width = Inf)
 ```
 
 ```{r}
-str(chartevents_tble1)
+(labevents_tble_orig <- open_dataset("labevents_pq") |>
+  select(subject_id, itemid, storetime, valuenum) |>
+  filter(
+    itemid %in% pull(dlabitems_tble, itemid),
+    subject_id %in% pull(icustays_tble, subject_id)
+    ) |>
+  collect() |>
+  print(width = Inf)) |>
+  system.time()
 ```
 
-
 ```{r}
-labevents_subset <- labevents_tble1 %>%
-  left_join(d_labitems_tble, by = "itemid") %>%
-  select(subject_id, hadm_id, itemid, valuenum, storetime, label)
-labevents_subset <- labevents_subset %>%
-  semi_join(icustays_tble, by = c("subject_id" = "subject_id")) %>%
-  left_join(icustays_tble, by = c("subject_id" = "subject_id")) %>%
-  select(subject_id, stay_id, itemid, valuenum, storetime, label, intime, outtime) 
-labevents_subset <- labevents_subset %>%
-  group_by(stay_id, itemid) %>%
-  arrange(desc(storetime)) %>%
-  slice(1) %>%
-  ungroup() %>%
-  pivot_wider(names_from = label, values_from = valuenum)
-```  
-
-```{r}
-labevents_tble <- labevents_subset %>%
-  filter(storetime >= intime, storetime <= outtime) %>%
-  group_by(subject_id) %>%
-  arrange(desc(storetime), .by_group = TRUE) %>%
-  slice_head(n = 1) %>%
-  ungroup() %>%
-  select(subject_id, everything()) %>% 
-  select(-c(storetime, intime, outtime)) %>%
-  print(width = Inf)
+(labevents_tble <- labevents_tble_orig |>
+  # pull in the intime of ICU stays
+  left_join(
+    select(icustays_tble, subject_id, stay_id, intime), 
+    by = c("subject_id")
+    ) |>
+  # only keep lab items available to provider before this ICU stay
+  filter(storetime < intime) |>
+  # group by itemid
+  group_by(subject_id, stay_id, itemid) |>
+  # only keep the last storetime for each item before intime
+  # slice_max(storetime, n = 1) |> # this function takes longer
+  arrange(storetime, .by_group = TRUE) |>
+  slice_tail(n = 1) |>
+  # do not need charttime, storetime, and intime anymore
+  select(-storetime, -intime) |>
+  ungroup() |>
+  pivot_wider(names_from = itemid, values_from = valuenum) |>
+  # more informative column names
+  rename_at(
+    vars(as.character(dlabitems_tble$itemid)),
+    ~str_to_lower(dlabitems_tble$label)
+    ) %>%
+  rename(wbc = `white blood cells`) |> #, calcium = `calcium, total`
+  arrange(subject_id, stay_id) |>
+  print(width = Inf)) |>
+  system.time()
 ```
+
 
 
 ## Q6. Vitals from charted events
@@ -592,66 +531,56 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 ![](chartevents_tble.png)
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `chartevents_pq` folder available at the current working directory, for example, by a symbolic link.
-```{bash}
-#| eval: false
 
-zcat < ~/mimic/icu/chartevents.csv.gz > chartevents.csv
+```{r}
+chartevents_tble1 <- open_dataset("chartevents_pq") |>
+    filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) %>%
+    collect() |>
+    print(width = Inf)
 ```
 
 ```{r}
-#| eval: false
-chartevents_tble1 <- arrow::write_dataset(chartevents <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents.csv", format = "csv"), "~/Desktop/203B/203b-hw/hw3/chartevents_pq", format = "parquet")
-
-  chartevents_tble1 <- arrow::open_dataset("~/Desktop/203B/203b-hw/hw3/chartevents_pq", format = "parquet") %>%
-    filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) %>%
-    collect() 
+d_items_tble <- 
+  read_csv("~/mimic/icu/d_items.csv.gz", show_col_types = FALSE) |>
+  filter(itemid %in% c(
+    220045, # HR
+    220179, # NBPS
+    220180, # NPBd
+    220210, # RR
+    223761 # Temp F
+  )) |>
+  mutate(itemid = as.integer(itemid)) |>
+  print(width = Inf)
 ```
-
 
 ```{r}
 icustays_tble <- read.csv("~/mimic/icu/icustays.csv.gz") |>
+  arrange(subject_id, hadm_id) |>
   print(width = Inf)
 ```
 
-
 ```{r}
-library(dplyr)
-library(arrow)
+chartevents_tble <- chartevents_tble1 |>
+  select(subject_id, stay_id, itemid, charttime, valuenum) |>
+  semi_join(icustays_tble, by = "subject_id") |>
+  semi_join(d_items_tble, by = "itemid") |>
+  left_join(select(icustays_tble, stay_id, intime, outtime), 
+            by = c("stay_id")) |>
+  filter(charttime >= intime, charttime <= outtime) |>
+  group_by(subject_id, stay_id, itemid) |>
+  slice_min(charttime, n = 1) |>
+  select(-charttime, -intime, -outtime) |>
+  ungroup() |>
+  pivot_wider(names_from = itemid, values_from = valuenum) |>
+  rename_at(
+    .vars = vars(as.character(pull(d_items_tble, itemid))),
+    .funs = ~str_to_lower(pull(d_items_tble, label))
+  ) |>
+  arrange(subject_id, stay_id)
 
-# Filter for vitals of interest
-vitals <- c(220045, 220179, 220180, 223761, 220210)
-chartevents_subset <- chartevents_tble1 %>%
-  filter(itemid %in% vitals) %>%
-  select(stay_id, itemid, valuenum, charttime)
-
-# Get the first vital measurement within each ICU stay
-chartevents_subset <- chartevents_subset %>%
-  group_by(stay_id, itemid) %>%
-  arrange(charttime) %>%
-  slice(1) %>%
-  ungroup() %>%
-  pivot_wider(names_from = itemid, values_from = valuenum)
+print(chartevents_tble, width = Inf)
 ```
 
-```{r}
-chartevents_tble <- chartevents_subset %>%
-  left_join(icustays_tble, by = c("stay_id" = "stay_id")) %>% 
-  filter(charttime >= intime, charttime <= outtime) %>%
-  group_by(subject_id) %>%
-  arrange(charttime, .by_group = TRUE) %>%
-  slice_head(n = 1) %>%
-  ungroup() %>%
-  select(subject_id, everything()) %>% 
-  select(-c(charttime, intime, outtime, hadm_id, first_careunit, last_careunit, los)) %>%
-  rename(
-    Heart_Rate = `220045`,
-    Systolic_BP = `220179`,
-    Diastolic_BP = `220180`,
-    Respiratory_Rate = `220210`,
-    Temperature = `223761`
-  ) %>%
-  print(width = Inf)
-```
 
 
 ## Q7. Putting things together
@@ -684,19 +613,19 @@ patients_tble <- read.csv("~/mimic/hosp/patients.csv.gz") |>
 
 
 ```{r}
-mimic_icu_cohort <- chartevents_tble %>%
-  left_join(icustays_tble, by = c("subject_id" = "subject_id", "stay_id" = "stay_id")) %>% 
-  left_join(admissions_tble, by = c("subject_id" = "subject_id")) %>%
-  left_join(patients_tble, by = c("subject_id" = "subject_id")) %>%
-  left_join(labevents_tble, by = c("subject_id" = "subject_id", "stay_id" = "stay_id")) %>%
+
+ mimic_icu_cohort <- icustays_tble |>
+  left_join(admissions_tble, by = c("subject_id", "hadm_id")) |>
+  left_join(patients_tble, by = c("subject_id")) |>
   mutate(age = anchor_age + year(intime) - anchor_year) %>%
-  filter(age >= 18) %>%
-  group_by(subject_id) %>%
-  arrange(subject_id, .by_group = TRUE) %>%
-  slice_head(n = 1) %>%
-  ungroup() %>%
-  select(subject_id, everything()) %>%
+   filter(age >= 18) |>
+   left_join(labevents_tble, by = c("subject_id", "stay_id")) |>
+   left_join(chartevents_tble, by = c("subject_id", "stay_id")) |>
+   arrange(subject_id, stay_id) |>
+   collect() |>
   print(width = Inf)
+
+```
 
 ```
 
