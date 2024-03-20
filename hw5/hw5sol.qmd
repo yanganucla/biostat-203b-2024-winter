@@ -38,8 +38,10 @@ mimiciv_icu_cohort <- readRDS("/Users/yangan/Desktop/203B/203b-hw/hw4/mimiciv_sh
 # sort
 mimiciv_icu_cohort <- mimiciv_icu_cohort |>
   arrange(subject_id, hadm_id, stay_id) |>
-  select(-admit_provider_id, -last_careunit, -hospital_expire_flag, -dod, 
+  select(-admit_provider_id, -last_careunit, -deathtime, -dischtime, -edouttime,-edregtime, -discharge_location
          ) |>
+  mutate(hospital_expire_flag = as.factor(hospital_expire_flag)) |>
+  mutate(dod = as.POSIXct(dod)) |>
   mutate(los_long = los > 2) |>
   mutate(age = anchor_age + year(intime) - anchor_year) |>
   mutate(age = ifelse(age < 0, NA, age)) |>
@@ -52,12 +54,23 @@ mimiciv_icu_cohort <- mimiciv_icu_cohort |>
   mutate(insurance = as.factor(insurance)) |>
   mutate(admission_type = as.factor(admission_type)) |>
   mutate(admission_location = as.factor(admission_location)) |>
-  mutate(discharge_location = as.factor(discharge_location)) |>
   mutate(age = as.numeric(age)) |>
-  select(-los, -anchor_age, -anchor_year, -anchor_year_group) |>
-  na.omit() |>
+  select(-los, -anchor_age, -anchor_year, -anchor_year_group, -outtime, -intime, -admittime, -dod) |>
   print() 
+glimpse(mimiciv_icu_cohort)
+```
 
+```{r}
+mimiciv_icu_cohort |> 
+  map_df(~sum(is.na(.x))) |>
+  gather(variable, na_count) |>
+  filter(na_count > 0) |>
+  arrange(desc(na_count)) |>
+  gt()
+```
+
+
+```{r}
 data_split <- initial_split(
   mimiciv_icu_cohort, 
   # stratify by los_long
@@ -84,54 +97,60 @@ dim(mimic_other)
 mimic_test <- testing(data_split)
 dim(mimic_test)
 ```
-###svm
+
+
+
+###logit
 
 ```{r}
-svm_recipe <- 
+logit_recipe <- 
   recipe(
-    los_long ~ first_careunit + admission_location + insurance + language +
-      marital_status + race + gender + age + wbc + bicarbonate + glucose + 
-      sodium + creatinine + chloride + hematocrit + potassium + 
-      `non invasive blood pressure systolic` + 
-      `non invasive blood pressure diastolic` + 
-      `respiratory rate` + `heart rate` + `temperature fahrenheit`,
+    los_long ~ .,
     data = mimic_other
   ) |>
+  # mean imputation for 
+  step_impute_mean(all_numeric_predictors()) |>
+  # mode imputation for 
+  step_impute_mode(all_nominal_predictors()) |>
   # create traditional dummy variables (necessary for svm)
   step_dummy(all_nominal_predictors()) |>
   # zero-variance filter
   step_zv(all_numeric_predictors()) |> 
   # center and scale numeric data
-  step_normalize(all_numeric_predictors()) |>
-  print()
+  step_normalize(all_numeric_predictors()) 
 
 ```
+```{r}
+prepped_recipe <- prep(logit_recipe)
+baked_data <- bake(prepped_recipe, new_data = NULL) 
+baked_data
+```
+
 
 ```{r}
-svm_mod <- 
-  svm_rbf(
-    mode = "classification",
-    cost = tune(),
-    rbf_sigma = tune()
+logit_mod <- 
+  logistic_reg(
+    penalty = tune(), 
+    mixture = tune()
   ) |> 
-  set_engine("kernlab")
-svm_mod
+  set_engine("glmnet", standardize = FALSE) |>
+  print()
 ```
 
 ```{r}
-svm_wf <- workflow() |>
-  add_recipe(svm_recipe) |>
-  add_model(svm_mod)
-svm_wf
+logit_wf <- workflow() |>
+  add_recipe(logit_recipe) |>
+  add_model(logit_mod) |>
+  print()
 ```
 
 ```{r}
 param_grid <- grid_regular(
-  cost(range = c(-15, 5)),
-  rbf_sigma(range = c(-5, -3)),
-  levels = c(12, 4)
-  )
-param_grid
+  penalty(range = c(-3, 1)), 
+  mixture(),
+  levels = c(5, 3)
+)
+
 ```
 
 ```{r}
@@ -142,43 +161,46 @@ folds
 ```
 
 ```{r}
-svm_fit <- svm_wf |>
+(logit_fit <- logit_wf |>
   tune_grid(
     resamples = folds,
     grid = param_grid,
     metrics = metric_set(roc_auc, accuracy)
-    )
-svm_fit
+    )) |>
+  system.time()
 ```
 
 
 
 
+
+
 ```{r}
-svm_fit |>
+logit_fit |>
+  # aggregate metrics from K folds
   collect_metrics() |>
   print(width = Inf) |>
   filter(.metric == "roc_auc") |>
-  ggplot(mapping = aes(x = cost, y = mean, color = factor(rbf_sigma))) +
+  ggplot(mapping = aes(x = penalty, y = mean, color = factor(mixture))) +
   geom_point() +
-  labs(x = "Cost", y = "CV AUC") +
+  labs(x = "Penalty", y = "CV AUC") +
   scale_x_log10()
 ```
 
 ```{r}
-svm_fit |>
+logit_fit |>
   show_best("roc_auc")
 ```
 ```{r}
-best_svm <- svm_fit |>
+best_logit <- logit_fit |>
   select_best("roc_auc")
-best_svm
+best_logit
 ```
 
 ```{r}
 # Final workflow
-final_wf <- svm_wf |>
-  finalize_workflow(best_svm)
+final_wf <- logit_wf |>
+  finalize_workflow(best_logit)
 final_wf
 ```
 
@@ -195,36 +217,38 @@ final_fit
 final_fit |> 
   collect_metrics()
 ```
+```{r}
+#feature importance
+library(vip)
 
+final_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip()
+```
   
 ###random forest
 
 ```{r}
-library(GGally)
-library(gtsummary)
-library(ranger)
-library(tidyverse)
 library(tidymodels)
 
+# Assuming mimic_other is your dataset and los_long is the outcome variable
+mimic_other <- mimic_other %>%
+  mutate(los_long = as.factor(los_long))  # Convert to factor
+
+# Define the recipe
 rf_recipe <- 
   recipe(
-        los_long ~ first_careunit + admission_location + insurance + language +
-      marital_status + race + gender + age + wbc + bicarbonate + glucose + 
-      sodium + creatinine + chloride + hematocrit + potassium + 
-      `non invasive blood pressure systolic` + 
-      `non invasive blood pressure diastolic` + 
-      `respiratory rate` + `heart rate` + `temperature fahrenheit`,
+    los_long ~ .,
     data = mimic_other
   ) |>
-  # create traditional dummy variables (necessary for svm)
-  #step_dummy(all_nominal_predictors()) |>
-  # zero-variance filter
+  step_impute_mean(all_numeric_predictors()) |>
+  step_impute_mode(all_nominal_predictors()) |>
+  step_dummy(all_nominal_predictors()) |>
   step_zv(all_numeric_predictors()) |> 
-  # center and scale numeric data
-  #step_normalize(all_numeric_predictors()) |>
-  # estimate the means and standard deviations
-  # prep(training = Heart_other, retain = TRUE) |>
-  print()
+  step_normalize(all_numeric_predictors())
+
+# Proceed with your model setup and tuning as before
+
 ```
 
 ```{r}
@@ -272,8 +296,6 @@ rf_fit
 ```
 
 
-
-
 ```{r}
 rf_fit |>
   collect_metrics() |>
@@ -314,6 +336,15 @@ final_fit2
 final_fit2 |> 
   collect_metrics()
 ```
+```{r}
+#feature importance
+library(vip)
+
+final_fit2 %>% 
+  extract_fit_parsnip() %>% 
+  vip()
+```
+
 ###XGBoost
 
 ```{r}
@@ -323,20 +354,16 @@ library(ranger)
 library(tidyverse)
 library(tidymodels)
 library(xgboost)
-
 gb_recipe <- 
-  recipe(
-        los_long ~ first_careunit + admission_location + insurance + language +
-      marital_status + race + gender + age + wbc + bicarbonate + glucose + 
-      sodium + creatinine + chloride + hematocrit + potassium + 
-      `non invasive blood pressure systolic` + 
-      `non invasive blood pressure diastolic` + 
-      `respiratory rate` + `heart rate` + `temperature fahrenheit`,
+    recipe(
+    los_long ~ .,
     data = mimic_other
-  ) %>%
-  step_dummy(all_nominal_predictors()) %>%
-  step_date(all_datetime()) %>%
-  step_rm(starts_with(c("intime", "outtime", "admittime", "dischtime", "deathtime", "edregtime", "edouttime", "dod")))
+  ) |>
+  step_impute_mean(all_numeric_predictors()) |>
+  step_impute_mode(all_nominal_predictors()) |>
+  step_dummy(all_nominal_predictors()) |>
+  step_zv(all_numeric_predictors()) |> 
+  step_normalize(all_numeric_predictors())
 gb_recipe
 
 ```
@@ -449,21 +476,20 @@ library(tidyverse)
 library(tidymodels)
 library(xgboost)
 mimic_recipe <- 
-  recipe(
-       los_long ~ first_careunit + admission_location + insurance + language +
-      marital_status + race + gender + age + wbc + bicarbonate + glucose + 
-      sodium + creatinine + chloride + hematocrit + potassium + 
-      `non invasive blood pressure systolic` + 
-      `non invasive blood pressure diastolic` + 
-      `respiratory rate` + `heart rate` + `temperature fahrenheit`,
+    recipe(
+    los_long ~ .,
     data = mimic_other
   ) |>
-  # create traditional dummy variables (necessary for xgboost)
+  # mean imputation for 
+  step_impute_mean(all_numeric_predictors()) |>
+  # mode imputation for 
+  step_impute_mode(all_nominal_predictors()) |>
+  # create traditional dummy variables (necessary for svm)
   step_dummy(all_nominal_predictors()) |>
   # zero-variance filter
-  step_zv(all_predictors()) 
-  # estimate the means and standard deviations
-  # prep(training = Heart_other, retain = TRUE)
+  step_zv(all_numeric_predictors()) |> 
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors()) 
 mimic_recipe
 ```
 
@@ -472,82 +498,81 @@ set.seed(203)
 folds <- vfold_cv(mimic_other, v = 5)
 folds
 ```
-####svm
+####logit model
 ```{r}
-svm_mod2 <- 
-  svm_rbf(
-    mode = "classification",
-    cost = tune(),
-    rbf_sigma = tune()
-  ) |>
-  set_engine("kernlab")
-svm_mod2
+logit_mod <- 
+  logistic_reg(
+    penalty = tune(), 
+    mixture = tune()
+  ) |> 
+  set_engine("glmnet", standardize = FALSE) |>
+  print()
 ```
 
 ```{r}
-svm_wf2 <- workflow() |>
-  add_recipe(mimic_recipe) |>
-  add_model(svm_mod2)
-svm_wf2
+logit_wf <- workflow() |>
+  add_recipe(logit_recipe) |>
+  add_model(logit_mod) |>
+  print()
 ```
 
 ```{r}
-svm_grid2 <- grid_regular(
-   cost(range = c(-15, 5)),
-  rbf_sigma(range = c(-5, -3)),
-  levels = c(12, 4)
+param_grid <- grid_regular(
+  penalty(range = c(-3, 1)), 
+  mixture(),
+  levels = c(5, 3)
 )
 
-svm_res2 <- tune_grid(
-  object = svm_wf2,
+logit_res <- tune_grid(
+  object = logit_wf,
   resamples = folds,
-  grid = svm_grid2,
+  grid = param_grid,
   control = control_stack_grid()
 )
 
-svm_res2
+logit_res
 ```
 ####random forest
 ```{r}
-rf_mod2 <- 
+rf_mod <- 
   rand_forest(
     mode = "classification",
-    # Number of predictors randomly sampled in each split
     mtry = tune(),
-    # Number of trees in ensemble
     trees = tune()
-  ) |>
+  ) |> 
   set_engine("ranger")
-rf_mod2
+rf_mod
 ```
 
 ```{r}
-rf_wf2 <- workflow() |>
-  add_recipe(mimic_recipe) |>
-  add_model(rf_mod2)
-rf_wf2
+rf_wf <- workflow() |>
+  add_recipe(rf_recipe) |>
+  add_model(rf_mod)
+rf_wf
 ```
 
 ```{r}
-rf_grid2 <- grid_regular(
-  trees(range = c(100L, 500L)),
+param_grid2 <- grid_regular(
+  trees(range = c(100L, 300L)),
   mtry(range = c(1L, 5L)),
   levels = c(5, 5)
-)
+  )
+param_grid2
 
-rf_res2 <- tune_grid(
-  object = rf_wf2,
+rf_res <- tune_grid(
+  object = rf_wf,
   resamples = folds,
-  grid = rf_grid2,
+  grid = param_grid2,
   control = control_stack_grid()
 )
 
-rf_res2
+rf_res
 ```
 
 ####XGboost
+
 ```{r}
-gb_mod2 <- 
+gb_mod <- 
   boost_tree(
     mode = "classification",
     trees = 1000,
@@ -555,31 +580,32 @@ gb_mod2 <-
     learn_rate = tune()
   ) |> 
   set_engine("xgboost")
-gb_mod2
+gb_mod
 ```
 
 ```{r}
-gb_wf2 <- workflow() |>
-  add_recipe(mimic_recipe) |>
-  add_model(gb_mod2)
-gb_wf2
+gb_wf <- workflow() |>
+  add_recipe(gb_recipe) |>
+  add_model(gb_mod)
+gb_wf
 ```
 
 ```{r}
-gb_grid2 <- grid_regular(
+param_grid3 <- grid_regular(
   tree_depth(range = c(1L, 3L)),
   learn_rate(range = c(-5, 2), trans = log10_trans()),
   levels = c(3,10)
   )
+param_grid3
 
-gb_res2 <- 
+gb_res <- 
   tune_grid(
-    object = gb_wf2, 
+    object = gb_wf, 
     resamples = folds, 
-    grid = gb_grid2,
+    grid = param_grid3,
     control = control_stack_grid()
   )
-gb_res2
+gb_res
 ```
 
 
@@ -588,9 +614,9 @@ mimic_model_st <-
   # initialize the stack
   stacks() |>
   # add candidate members
-  add_candidates(svm_res2) |>
-  add_candidates(rf_res2) |>
-  add_candidates(gb_res2) |>
+  add_candidates(logit_res) |>
+  add_candidates(rf_res) |>
+  add_candidates(gb_res) |>
   # determine how to combine their predictions
   blend_predictions(
     penalty = 10^(-6:2),
@@ -618,7 +644,7 @@ autoplot(mimic_model_st, type = "weights")
 ```
 
 ```{r}
-collect_parameters(mimic_model_st, "rf_res2")
+collect_parameters(mimic_model_st, "rf_res")
 ```
 
 ```{r}
@@ -700,7 +726,23 @@ yardstick::roc_auc(
   contains(".pred_FALSE")
   )
 ```
+```{r}
+#feature importance
+library(vip)
 
+final_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip()
+```
+
+```{r}
+#feature importance
+library(vip)
+
+final_fit2 %>% 
+  extract_fit_parsnip() %>% 
+  vip()
+```
 ```{r}
 #feature importance
 library(vip)
@@ -710,19 +752,26 @@ final_fit3 %>%
   vip()
 ```
 
-In my analysis, there were n = 3748 patients in the MIMIC-IV ICU cohort, and 50/50 split.
+In my analysis, there were n = 50920 patients in the MIMIC-IV ICU cohort, and 50/50 split.
 I build three machine learning models and a model stacking to predict long ICU stays. The three models are logistic regression, random forest, and xgboost. The model stacking is a combination of the three models. The area under the ROC curve and accuracy for each machine learning algorithm and the model stacking are as follows:
-SVM (Support Vector Machine): AUC = 0.57, Accuracy = 0.62
-This model has an AUC of 0.57, indicating that its ability to distinguish between the classes (e.g., predicting whether a patient's ICU stay will be longer than 2 days) is slightly better than random guessing, which would have an AUC of 0.5. The accuracy of 0.62 means that 62% of the model's predictions match the actual data. In other words, it correctly predicts the outcome for approximately 62 out of every 100 cases.
-Random Forest: AUC = 0.57, Accuracy = 0.62
-The Random Forest model also shows an AUC of 0.57, similar to the SVM, suggesting a similar level of capability in distinguishing between the classes. With an accuracy of 0.62, it correctly predicts 62% of the outcomes, indicating that its overall predictive performance is similar to that of the SVM model.
-XGBoost: AUC = 0.52, Accuracy = 0.61
-The XGBoost model has a lower AUC of 0.52, which means it's slightly better than random chance but not as effective as the SVM or Random Forest models in distinguishing between the classes. Its accuracy of 0.61 indicates that it correctly predicts the outcome for 61 out of every 100 cases, which is slightly lower than the other two models but still above random guessing.
-Stacking: AUC = 0.57, Accuracy = 0.63
-The Stacking model combines predictions from multiple models and has an AUC of 0.57, indicating a similar ability to distinguish between classes as the SVM and Random Forest models. However, it slightly improves on accuracy with a score of 0.63, meaning it correctly predicts the outcome for 63 out of every 100 cases, making it the most accurate of the models listed here.
-Overall, all four models perform better than random guessing (AUC > 0.5), but none show a particularly strong ability to distinguish between the classes, as indicated by AUC values close to 0.5. The Stacking model shows a slight improvement in accuracy over the individual models, suggesting that combining multiple models' predictions can enhance predictive performance.
-The most important features in predicting long ICU stays are the age of the patient, temperature fahrenheit, and heart rate. High heart rate is predictive of long term stay because it is a sign of stress and the body is working harder to maintain the body temperature. 
-In conclusion, the stacking model has the best performance and is the most interpretable. The stacking model is the best model for predicting long ICU stays. It has the highest AUC and accuracy, and it combines the predictions of multiple models to enhance predictive performance. The stacking model is the most interpretable because it combines the predictions of multiple models, allowing for a more comprehensive understanding of the data and the factors that influence long ICU stays.
+logit: AUC = 0.58, Accuracy = 0.61
+Random Forest: AUC = 0.58, Accuracy = 0.61
+XGBoost: AUC = 0.66, Accuracy = 0.61
+Stacking: AUC = 0.67, Accuracy = 0.63
+The most important features in predicting long ICU stays are the temperature fahrenheit, noninvasive blood pressure systolic and first_careunit. 
+Interpretation of Results:
+Logistic Regression and Random Forest both achieved an AUC of 0.58 and accuracy of 0.61, indicating moderate predictive performance with similar capabilities in distinguishing between short and long ICU stays. The identical scores suggest that, for this task, the complexity of the random forest model does not provide a significant advantage over the simpler logistic regression model in terms of discriminative ability.
+XGBoost showed a notable improvement with an AUC of 0.66 while maintaining the same accuracy as the other two models (0.61). This enhancement in AUC signifies better discriminative power, likely due to XGBoost's ability to capture complex, non-linear relationships and interactions between features through gradient boosting.
+Stacking further improved the performance, achieving the highest AUC of 0.67 and an accuracy of 0.63. This demonstrates the strength of ensemble learning, where combining the predictions from multiple models leads to a more accurate and robust classifier than any single model alone.
+Importance of Features:
+Identifying temperature Fahrenheit, noninvasive blood pressure systolic, and first_careunit as the most important features suggests that physiological parameters and initial care unit admission are critical in determining the length of ICU stays. This aligns with clinical intuition, as vital signs reflect a patient's immediate health status, and the type of care unit may indicate the severity of the patient's condition.
+Performance vs. Interpretability:
+Logistic Regression offers the most straightforward interpretability among the models. The coefficients of the logistic regression model can directly indicate the effect size and direction (positive or negative) of each feature on the likelihood of a long ICU stay.
+Random Forest and XGBoost provide insights into feature importance, which helps understand which variables are most predictive of long ICU stays. However, the internal decision-making process (i.e., how the features interact to make predictions) is less transparent than in logistic regression, making these models more challenging to interpret.
+Model Stacking achieves the best predictive performance but at the cost of further reduced interpretability. Understanding how individual predictions are combined in the stacking process can be complex, making it more difficult to extract clinically actionable insights.
+Conclusion:
+The trade-off between performance and interpretability is evident in my analysis. While XGBoost and model stacking show superior performance, they do so at the expense of interpretability. Logistic regression offers a balance between moderate predictive power and ease of interpretation, making it valuable in settings where understanding the influence of specific features is crucial.
+For predicting long ICU stays, leveraging the strengths of each model according to the clinical context and decision-making requirements is essential. In practice, combining the predictive power of models like XGBoost with the interpretability of logistic regression, possibly through model explanations or feature importance analyses, could provide a pragmatic approach to improving patient care and resource allocation in the ICU.
 
 
 
