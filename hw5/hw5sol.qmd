@@ -127,9 +127,9 @@ svm_wf
 
 ```{r}
 param_grid <- grid_regular(
-  cost(range = c(-8, 5)),
+  cost(range = c(-15, 5)),
   rbf_sigma(range = c(-5, -3)),
-  levels = c(14, 5)
+  levels = c(12, 4)
   )
 param_grid
 ```
@@ -247,7 +247,7 @@ rf_wf
 
 ```{r}
 param_grid2 <- grid_regular(
-  trees(range = c(100L, 500L)),
+  trees(range = c(100L, 300L)),
   mtry(range = c(1L, 5L)),
   levels = c(5, 5)
   )
@@ -493,18 +493,17 @@ svm_wf2
 
 ```{r}
 svm_grid2 <- grid_regular(
-  cost(range = c(-8, 5)),
+   cost(range = c(-15, 5)),
   rbf_sigma(range = c(-5, -3)),
-  levels = c(14, 5)
-  )
+  levels = c(12, 4)
+)
 
-svm_res2 <- 
-  tune_grid(
-    object = svm_wf2,
-    resamples = folds,
-    grid = svm_grid2,
-    control = control_stack_grid()
-  )
+svm_res2 <- tune_grid(
+  object = svm_wf2,
+  resamples = folds,
+  grid = svm_grid2,
+  control = control_stack_grid()
+)
 
 svm_res2
 ```
@@ -531,18 +530,18 @@ rf_wf2
 
 ```{r}
 rf_grid2 <- grid_regular(
-  trees(range = c(100L, 500L)), 
+  trees(range = c(100L, 500L)),
   mtry(range = c(1L, 5L)),
   levels = c(5, 5)
-  )
+)
 
-rf_res2 <- 
-  tune_grid(
-    object = rf_wf2, 
-    resamples = folds, 
-    grid = rf_grid2,
-    control = control_stack_grid()
-  )
+rf_res2 <- tune_grid(
+  object = rf_wf2,
+  resamples = folds,
+  grid = rf_grid2,
+  control = control_stack_grid()
+)
+
 rf_res2
 ```
 
@@ -713,13 +712,18 @@ final_fit3 %>%
 
 In my analysis, there were n = 3748 patients in the MIMIC-IV ICU cohort, and 50/50 split.
 I build three machine learning models and a model stacking to predict long ICU stays. The three models are logistic regression, random forest, and xgboost. The model stacking is a combination of the three models. The area under the ROC curve and accuracy for each machine learning algorithm and the model stacking are as follows:
-- SVM: AUC = 0.56, Accuracy = 0.62
-- Random Forest: AUC = 0.57, Accuracy = 0.62
-- XGBoost: AUC = 0.52, Accuracy = 0.61
-- Stacking: AUC = 0.57, Accuracy = 0.63
-Stacking is the best model with 0.57 AUC and 0.63 accuracy, followed by random forest with 0.57 AUC and 0.62 accuracy, and SVM with 0.56 AUC and 0.62 accuracy.
-XGBoost has the lowest AUC and accuracy.
+SVM (Support Vector Machine): AUC = 0.57, Accuracy = 0.62
+This model has an AUC of 0.57, indicating that its ability to distinguish between the classes (e.g., predicting whether a patient's ICU stay will be longer than 2 days) is slightly better than random guessing, which would have an AUC of 0.5. The accuracy of 0.62 means that 62% of the model's predictions match the actual data. In other words, it correctly predicts the outcome for approximately 62 out of every 100 cases.
+Random Forest: AUC = 0.57, Accuracy = 0.62
+The Random Forest model also shows an AUC of 0.57, similar to the SVM, suggesting a similar level of capability in distinguishing between the classes. With an accuracy of 0.62, it correctly predicts 62% of the outcomes, indicating that its overall predictive performance is similar to that of the SVM model.
+XGBoost: AUC = 0.52, Accuracy = 0.61
+The XGBoost model has a lower AUC of 0.52, which means it's slightly better than random chance but not as effective as the SVM or Random Forest models in distinguishing between the classes. Its accuracy of 0.61 indicates that it correctly predicts the outcome for 61 out of every 100 cases, which is slightly lower than the other two models but still above random guessing.
+Stacking: AUC = 0.57, Accuracy = 0.63
+The Stacking model combines predictions from multiple models and has an AUC of 0.57, indicating a similar ability to distinguish between classes as the SVM and Random Forest models. However, it slightly improves on accuracy with a score of 0.63, meaning it correctly predicts the outcome for 63 out of every 100 cases, making it the most accurate of the models listed here.
+Overall, all four models perform better than random guessing (AUC > 0.5), but none show a particularly strong ability to distinguish between the classes, as indicated by AUC values close to 0.5. The Stacking model shows a slight improvement in accuracy over the individual models, suggesting that combining multiple models' predictions can enhance predictive performance.
 The most important features in predicting long ICU stays are the age of the patient, temperature fahrenheit, and heart rate. High heart rate is predictive of long term stay because it is a sign of stress and the body is working harder to maintain the body temperature. 
-The stacking model has the best performance and is the most interpretable. The stacking model is the best model for predicting long ICU stays.
+In conclusion, the stacking model has the best performance and is the most interpretable. The stacking model is the best model for predicting long ICU stays. It has the highest AUC and accuracy, and it combines the predictions of multiple models to enhance predictive performance. The stacking model is the most interpretable because it combines the predictions of multiple models, allowing for a more comprehensive understanding of the data and the factors that influence long ICU stays.
+
+
 
 
