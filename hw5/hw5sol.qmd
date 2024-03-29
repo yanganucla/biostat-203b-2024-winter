@@ -33,7 +33,7 @@ library(gtsummary)
 library(tidyverse)
 set.seed(203)
 # Load data
-mimiciv_icu_cohort <- readRDS("/Users/yangan/Desktop/203B/203b-hw/hw4/mimiciv_shiny/mimic_icu_cohort.rds")
+mimiciv_icu_cohort <- readRDS("mimiciv_shiny/mimic_icu_cohort.rds")
 
 # sort
 mimiciv_icu_cohort <- mimiciv_icu_cohort |>
