@@ -38,7 +38,8 @@ mimiciv_icu_cohort <- readRDS("mimic_icu_cohort.rds")
 # sort
 mimiciv_icu_cohort <- mimiciv_icu_cohort |>
   arrange(subject_id, hadm_id, stay_id) |>
-  select(-admit_provider_id, -last_careunit, -deathtime, -dischtime, -edouttime,-edregtime, -discharge_location
+  select(-admit_provider_id, -last_careunit, -deathtime, -dischtime, 
+         -edouttime,-edregtime, -discharge_location
          ) |>
   mutate(hospital_expire_flag = as.factor(hospital_expire_flag)) |>
   mutate(dod = as.POSIXct(dod)) |>
@@ -55,7 +56,8 @@ mimiciv_icu_cohort <- mimiciv_icu_cohort |>
   mutate(admission_type = as.factor(admission_type)) |>
   mutate(admission_location = as.factor(admission_location)) |>
   mutate(age = as.numeric(age)) |>
-  select(-los, -anchor_age, -anchor_year, -anchor_year_group, -outtime, -intime, -admittime, -dod) |>
+  select(-los, -anchor_age, -anchor_year, -anchor_year_group, 
+         -outtime, -intime, -admittime, -dod) |>
   print() 
 glimpse(mimiciv_icu_cohort)
 ```
@@ -475,8 +477,9 @@ library(stacks)
 library(tidyverse)
 library(tidymodels)
 library(xgboost)
+
 mimic_recipe <- 
-    recipe(
+  recipe(
     los_long ~ .,
     data = mimic_other
   ) |>
